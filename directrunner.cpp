@@ -5574,7 +5574,7 @@ bool directRunner::runCommandNU(const unsigned char command, int contact, bool s
             emit manualCommandComplete(false);
             return false;
         }
-        printMessage.append(QString("Директива %4: конткат %1 %2. <%3>").arg(contact).arg(setConnect ? "вкл" : "выкл").arg(contact == 100 ? "земля" : QString::number(contact + 1)).arg(dirName));
+        printMessage.append(QString("Директива %4: контакт %1 %2. <%3>").arg(contact).arg(setConnect ? "вкл" : "выкл").arg(contact == 100 ? "земля" : QString::number(contact + 1)).arg(dirName));
         printInProt(printMessage, "30", textStyle());
     } else if (command == static_cast<char>(NUCommand::SBR_PODKL)){
         QByteArray cBA;
@@ -5637,7 +5637,7 @@ bool directRunner::runCommandNU(const unsigned char command, int contact, bool s
             QByteArray floatData = respondNU.mid(2);
             errno_t err = memcpy_s(&result, sizeof(result), floatData.constData(), sizeof (float));
             if (err != 0){
-                errorMessage.append("Ошибка в полученном ответе от НУ (неудалось получить значение)");
+                errorMessage.append("Ошибка в полученном ответе от НУ (не удалось получить значение)");
                 printInProt(errorMessage, "13", textStyle());
                 emit printMessageToManualWindow(errorMessage, "red");
                 emit manualCommandComplete(false);
