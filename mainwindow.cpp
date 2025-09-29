@@ -9,7 +9,10 @@
 #include "protmanager.h"
 #include "textsearcher.h"
 #include "constvalues.h"
-
+#include "helpbrowser.h"
+#include <QHelpEngine>
+#include <QHelpContentWidget>
+#include <QHelpIndexWidget>
 
 #include <QLocalSocket>
 
@@ -1688,6 +1691,60 @@ MainWindow::MainWindow(QWidget *parent)
         QStringList timeWork = getTimeWorkAppcp();
         emit sendTimeWorkAppcp(timeWork);
     }, Qt::QueuedConnection);
+
+    if (!paramValues.contains("СПРАВКА") || QFileInfo(paramValues.value("СПРАВКА")).suffix().toUpper() != "QHC" || !QFile(paramValues.value("СПРАВКА")).exists()){
+        QMessageBox::critical(nullptr, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении");
+    } else{
+        qDebug() << paramValues.value("СПРАВКА");
+        QHelpEngine *helpEngine = new QHelpEngine(paramValues.value("СПРАВКА"), this);
+        if (!helpEngine->setupData()) {
+            QMessageBox::critical(nullptr, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении");
+        } else{
+            QObject::connect(referense, &QAction::triggered, this, [this, helpEngine](){
+                static QSplitter *splitter;
+                static bool init{false};
+                if (!init){
+                    QHelpContentWidget *contentWidget = helpEngine->contentWidget();
+
+                    // Виджет индекса (поиск по ключевым словам)
+                    QHelpIndexWidget *indexWidget = helpEngine->indexWidget();
+
+                    // Браузер для отображения страниц справки
+                    // Браузер для отображения страниц справки
+                    HelpBrowser *textBrowser = new HelpBrowser(helpEngine);
+
+                    // Используем лямбду, чтобы сигналы и слоты совпадали
+                    QObject::connect(contentWidget, &QHelpContentWidget::linkActivated,
+                                     [=](const QUrl &url){
+                                         QByteArray html = helpEngine->fileData(url);
+                                         textBrowser->setSource(url);
+                                     });
+
+                    QObject::connect(indexWidget, &QHelpIndexWidget::linkActivated,
+                                     [=](const QUrl &url){
+                                         QByteArray html = helpEngine->fileData(url);
+                                         textBrowser->setSource(url);
+                                     });
+
+                    QObject::connect(textBrowser, &QTextBrowser::anchorClicked, [=](const QUrl& url){
+                        QByteArray html = helpEngine->fileData(url);
+                        textBrowser->setHtml(QString::fromUtf8(html));
+                    });
+
+                    // Разделитель для панели содержания и текста
+                    splitter = new QSplitter();
+                    splitter->addWidget(contentWidget);
+                    splitter->addWidget(textBrowser);
+                    splitter->setStretchFactor(1, 1);
+                    init = true;
+                }
+
+                splitter->resize(800, 600);
+                splitter->setWindowTitle("APPCP HELP");
+                splitter->show();
+            });
+        }
+    }
 
     QString TimeControlPath;
     if (paramValues.contains("КОНТР_ВРЕМЕНИ")){
