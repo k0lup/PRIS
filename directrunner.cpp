@@ -2356,6 +2356,10 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         QString resultString;
         do{
         if (dir.testParamDirect[rowNum].count() != 2 || dir.testParamDirect[rowNum][1].count() != 1){
+            if (rowNum == 0 && dir.testParamDirect[rowNum].count() == 2 && dir.testParamDirect[rowNum][1].count() == 0){
+                rowNum+=1;
+                continue;
+            }
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             if (dir.numDirect > -1){
                 errorMessage.append("\t#" + numDirect + "\t\t");
@@ -2367,7 +2371,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             return false;
         }
         QList<RRParam> rrParamsList;
-        if (dir.testParamDirect[0][1][0] == "ВСЕ"){
+        if (rowNum == 0 && dir.testParamDirect[0][1][0] == "ВСЕ"){
             if (dir.testParamDirect.count() > 1){
                 errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
                 if (dir.numDirect > -1){
