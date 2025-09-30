@@ -1692,6 +1692,9 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         }
         for (int row = 0; row < dir.testParamDirect.count(); row++){
         if (dir.testParamDirect[row].count() != 2 || ((dir.testParamDirect[row][1].count() != 3) && (dir.testParamDirect[row][1].count() != 4))){
+            if (row == 0 && dir.testParamDirect[row].count() == 2 && dir.testParamDirect[row][1].count() == 0){
+                continue;
+            }
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             if (dir.numDirect > -1){
                 errorMessage.append("\t#" + numDirect + "\t\t");
