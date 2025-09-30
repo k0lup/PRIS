@@ -4993,8 +4993,9 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         }
         //QRegularExpression regex(R"(FL\.([A-Za-z0-9]{1,3})_([A-Za-z0-9]{1,8})(?:\[(\d+)\])?)");
         QList<QString> strList = dir.testParamDirect[0][1];
+
         if (strList[0] == "-") strList.removeAt(0);
-        if ((strList.count() < 1) || (strList[0] == "+" && strList.count() < 2)){
+        /*if ((strList.count() < 1) || (strList[0] == "+" && strList.count() < 2)){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             if (dir.numDirect > -1){
                 errorMessage.append("\t#" + numDirect + "\t\t");
@@ -5004,9 +5005,8 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 printInProt(errorMessage, "13", textStyle());
             }
             return false;
-        }
-        QString param = strList[0];
-        int paramLen{0};
+        }*/
+        /*int paramLen{0};
         if (param == "+"){
             paramLen = strList[1].count();
         } else paramLen = param.count();
@@ -5021,8 +5021,9 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 printInProt(errorMessage, "13", textStyle());
             }
             return false;
-        }
+        }*/
         if (strList.count() >= 2 && strList[1] == "-БЛ"){
+            QString param = strList[0];
             if (strList.count() > 2){
                 errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
                 if (dir.numDirect > -1){
@@ -5077,6 +5078,9 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
             strList.clear();
             for (int row = 0; row < dir.testParamDirect.count(); ++row){
+                if (row == 0 && dir.testParamDirect[row].count() == 2 && dir.testParamDirect[row][1].count() == 1 && (dir.testParamDirect[row][1][0] == "+" || dir.testParamDirect[row][1][0] == "-")){
+                    continue;
+                }
                 if (dir.testParamDirect[row].count() < 2 || dir.testParamDirect[row][1].isEmpty()){
                     errorMessage.append(QString("\t\t\t") + "ОШИБКА: НЕТ ПАРАМЕТРОВ ДИРЕКТИВЫ РР_ПАР");
                     {
