@@ -827,6 +827,7 @@ MainWindow::MainWindow(QWidget *parent)
        static QWidget *paramAPPCPInfo;
        if (!paramAPPCPInfo){
            paramAPPCPInfo = new QWidget();
+           paramAPPCPInfo->setWindowTitle("Параметры АППЦП");
            //QSqlDatabase db;
            //QString dbFilePath = this->paramValues.value("БАЗА_ДАННЫХ");
            //if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "MDB" && QFileInfo(dbFilePath).suffix().toUpper() != "ACCDB")) return;
@@ -860,10 +861,15 @@ MainWindow::MainWindow(QWidget *parent)
                                     )");
            tableView->resizeColumnsToContents();
 
-           QPushButton *topBtn = new QPushButton("t", paramAPPCPInfo);
-           QPushButton *upBtn = new QPushButton("u", paramAPPCPInfo);
-           QPushButton *downBtn = new QPushButton("d", paramAPPCPInfo);
-           QPushButton *bottomBtn = new QPushButton("b", paramAPPCPInfo);
+           QPushButton *topBtn = new QPushButton(paramAPPCPInfo);
+           QPushButton *upBtn = new QPushButton(paramAPPCPInfo);
+           QPushButton *downBtn = new QPushButton(paramAPPCPInfo);
+           QPushButton *bottomBtn = new QPushButton(paramAPPCPInfo);
+
+           topBtn->setIcon(QIcon(":/img/img/arrowUPToEnd.png"));
+           upBtn->setIcon(QIcon(":/img/img/arrowUP.png"));
+           downBtn->setIcon(QIcon(":/img/img/arrowDown.png"));
+           bottomBtn->setIcon(QIcon(":/img/img/arrowDownToEnd.png"));
 
            QPushButton *findBtn = new QPushButton("найти", paramAPPCPInfo);
            QPushButton *copyBtn = new QPushButton("Копировать", paramAPPCPInfo);
@@ -1034,10 +1040,15 @@ MainWindow::MainWindow(QWidget *parent)
 
         if (!rrParWgt){
             rrParWgt = new QWidget();
-            QPushButton *topBtn = new QPushButton("t", rrParWgt);
-            QPushButton *upBtn = new QPushButton("u", rrParWgt);
-            QPushButton *downBtn = new QPushButton("d", rrParWgt);
-            QPushButton *bottomBtn = new QPushButton("b", rrParWgt);
+            QPushButton *topBtn = new QPushButton(rrParWgt);
+            QPushButton *upBtn = new QPushButton(rrParWgt);
+            QPushButton *downBtn = new QPushButton(rrParWgt);
+            QPushButton *bottomBtn = new QPushButton(rrParWgt);
+
+            topBtn->setIcon(QIcon(":/img/img/arrowUPToEnd.png"));
+            upBtn->setIcon(QIcon(":/img/img/arrowUP.png"));
+            downBtn->setIcon(QIcon(":/img/img/arrowDown.png"));
+            bottomBtn->setIcon(QIcon(":/img/img/arrowDownToEnd.png"));
 
             QPushButton *findBtn = new QPushButton("найти", rrParWgt);
 

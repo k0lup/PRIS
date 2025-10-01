@@ -241,9 +241,11 @@ ManualMode::ManualMode(QWidget *parent) : QWidget(parent)
             plConns->setLayout(vBoxplConns);
 
     minGr = new QPushButton("З", this);
+    minGr->setIcon(QIcon(":/img/img/ground.png"));
     minGr->setCheckable(true);
     minGr->setStyleSheet(defaultBtnStyle);
     plGr = new QPushButton("З", this);
+    plGr->setIcon(QIcon(":/img/img/ground.png"));
     plGr->setCheckable(true);
     plGr->setStyleSheet(defaultBtnStyle);
     QRect border = minGr->fontMetrics().boundingRect(minGr->text());
@@ -374,6 +376,8 @@ ManualMode::ManualMode(QWidget *parent) : QWidget(parent)
        if (conn->isChecked()) r50->setEnabled(false);
        else r50->setEnabled(true);
     });
+    minGr->setText("");
+    plGr->setText("");
 }
 
 bool ManualMode::contactSelected(raz x, polus p, int num){

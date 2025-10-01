@@ -2,4 +2,16 @@
     <qresource prefix="/DB">
         <file>EmptyBD.mdb</file>
     </qresource>
+    <qresource prefix="/img">
+        <file>img/appcpIcon.png</file>
+        <file>img/arrowDown.png</file>
+        <file>img/arrowDownToEnd.png</file>
+        <file>img/arrowLeft.png</file>
+        <file>img/arrowLeftToEnd.png</file>
+        <file>img/arrowRight.png</file>
+        <file>img/arrowRightToEnd.png</file>
+        <file>img/arrowUP.png</file>
+        <file>img/arrowUPToEnd.png</file>
+        <file>img/ground.png</file>
+    </qresource>
 </RCC>
