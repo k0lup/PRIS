@@ -87,7 +87,7 @@ bool RRParam::isArray(){
 int RRParam::getLength(){
     if (m_hasError) return false;
 
-    QString queryString = QString("SELECT MAX(Index) FROM RR_PAR WHERE Bl_Name = '%1' AND Par_Name = '%2'").arg(m_block).arg(m_name);
+    QString queryString = QString("SELECT MAX([Index]) FROM RR_PAR WHERE Bl_Name = '%1' AND Par_Name = '%2'").arg(m_block).arg(m_name);
     QSqlQuery query = MainWindow::getQueryRRDB(queryString);
     if (!query.isActive()){
         m_errorMessage = QString("ОШИБКА ОБРАЩЕНИЯ К БД РР ПАРАМЕТРОВ: " + query.lastError().text());
@@ -170,8 +170,8 @@ double RRParam::getValue(bool *status){
     float value = 0.0;
 
     QString queryString = QString("SELECT Val FROM RR_PAR WHERE Bl_Name = '%1' AND Par_Name = '%2'").arg(m_block).arg(m_name);
-    if (m_index != -1) queryString.append(QString(" AND Index = %3").arg(QString::number(m_index)));
-    else queryString.append(QString(" AND Index IS NULL"));
+    if (m_index != -1) queryString.append(QString(" AND [Index] = '%3'").arg(QString::number(m_index)));
+    else queryString.append(QString(" AND [Index] IS NULL"));
 
     QSqlQuery query = MainWindow::getQueryRRDB(queryString);
     if (!query.isActive()){
@@ -246,8 +246,8 @@ bool RRParam::setValue(const double value){
     }
 
     QString queryString;
-    if (m_index == -1) queryString = QString("UPDATE RR_PAR SET Val = %1 WHERE Bl_Name = '%2' AND Par_Name = '%3'").arg(value).arg(m_block).arg(m_name);
-    else queryString = QString("UPDATE RR_PAR SET Val = %1 WHERE Bl_Name = '%2' AND Par_Name = '%3' AND Index = %4").arg(value).arg(m_block).arg(m_name).arg(m_index);
+    if (m_index == -1) queryString = QString("UPDATE RR_PAR SET Val = '%1' WHERE Bl_Name = '%2' AND Par_Name = '%3'").arg(value).arg(m_block).arg(m_name);
+    else queryString = QString("UPDATE RR_PAR SET Val = '%1' WHERE Bl_Name = '%2' AND Par_Name = '%3' AND [Index] = '%4'").arg(value).arg(m_block).arg(m_name).arg(m_index);
 
     QSqlQuery query = MainWindow::getQueryRRDB(queryString);
     if (!query.isActive()){
@@ -287,7 +287,7 @@ bool RRParam::create(const double value){
 
     QString queryString;
     if (m_len < 0){
-        queryString = QString("INSERT INTO RR_PAR (Bl_Name, Par_Name, Val) VALUES ('%1', '%2', %3)").arg(m_block).arg(m_name).arg(value);
+        queryString = QString("INSERT INTO RR_PAR (Bl_Name, Par_Name, Val) VALUES ('%1', '%2', '%3')").arg(m_block).arg(m_name).arg(value);
         QSqlQuery query = MainWindow::getQueryRRDB(queryString);
         if (!query.isActive()){
             m_hasError = true;
@@ -298,7 +298,7 @@ bool RRParam::create(const double value){
         query.clear();
     } else{
         for (int index = 0; index < m_len; ++index){
-            queryString = QString("INSERT INTO RR_PAR (Bl_Name, Par_Name, Index, Val) VALUES ('%1', '%2', %3, %4)").arg(m_block).arg(m_name).arg(index).arg(value);
+            queryString = QString("INSERT INTO RR_PAR (Bl_Name, Par_Name, [Index], Val) VALUES ('%1', '%2', '%3', %4)").arg(m_block).arg(m_name).arg(index).arg(value);
             QSqlQuery query = MainWindow::getQueryRRDB(queryString);
             if (!query.isActive()){
                 m_hasError = true;

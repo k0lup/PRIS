@@ -540,29 +540,33 @@ MainWindow::MainWindow(QWidget *parent)
        numWgt->show();
     });
 
+    QDir dir(QDir::homePath());
+    if (!dir.exists()) dir.mkpath(".");
 
-
-    this->rrParDB = QSqlDatabase::addDatabase("QODBC", "RR PAR");
+    this->rrParDB = QSqlDatabase::addDatabase("QSQLITE", "RR PAR");
 
     QString dbFilePath = paramOnValues.value("РР_ПАРАМЕТРЫ");
-    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "MDB" && QFileInfo(dbFilePath).suffix().toUpper() != "ACCDB")){
+    if (dbFilePath.startsWith("~/")){
+        dbFilePath = QDir::home().filePath(dbFilePath.mid(2));
+    }
+    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
         QString errorMessage(QString("RR_DB_NOT_OPEN"));
         QMessageBox::critical(nullptr, "Ошибка", errorMessage);
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
     }
 
-    if (!QFile::exists(dbFilePath)){
+    /*if (!QFile::exists(dbFilePath)){
         if (!QFile::copy(":/DB/EmptyBD.mdb", dbFilePath)){
             QString errorMessage(QString("RR_DB_NOT_OPEN"));
             QMessageBox::critical(nullptr, "Ошибка", errorMessage);
             QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         }
-    }
+    }*/
 
 
     QFile(dbFilePath).setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     //rrParDB.setDatabaseName(QString("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
-    rrParDB.setDatabaseName(QString("DRIVER={Driver do Microsoft Access (*.mdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
+    rrParDB.setDatabaseName(dbFilePath);
 
     if (!rrParDB.open()){
         QString errorMessage(QString("RR_DB_NOT_OPEN"));
@@ -571,27 +575,23 @@ MainWindow::MainWindow(QWidget *parent)
         qDebug() << "DB_NOT_OPEN";
     }
 
-    appcpParDB = QSqlDatabase::addDatabase("QODBC", "APPCP PAR");
+    appcpParDB = QSqlDatabase::addDatabase("QSQLITE", "APPCP PAR");
     dbFilePath = paramValues.value("БАЗА_ДАННЫХ");
+    if (dbFilePath.startsWith("~/")){
+        dbFilePath = QDir::home().filePath(dbFilePath.mid(2));
+    }
     ipAppcpServ = paramValues.value("СЕРВЕР_АППЦП");
 
-    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "MDB" && QFileInfo(dbFilePath).suffix().toUpper() != "ACCDB")){
+    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
         QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
         QMessageBox::critical(nullptr, "Ошибка", errorMessage);
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
     }
 
-    if (!QFile::exists(dbFilePath)){
-        if (!QFile::copy(":/DB/EmptyBD.mdb", dbFilePath)){
-            QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
-            QMessageBox::critical(nullptr, "Ошибка", errorMessage);
-            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
-        }
-    }
 
     //appcpParDB.setDatabaseName(QString("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
     QFile(dbFilePath).setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    appcpParDB.setDatabaseName(QString("DRIVER={Driver do Microsoft Access (*.mdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
+    appcpParDB.setDatabaseName(dbFilePath);
     if (!appcpParDB.open()){
         QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
         QMessageBox::critical(nullptr, "Ошибка", errorMessage);
@@ -1051,8 +1051,7 @@ MainWindow::MainWindow(QWidget *parent)
             QPushButton *copyBtn = new QPushButton("Копировать", rrParWgt);
 
             QSqlQueryModel *rrParModel = new QSqlQueryModel(rrParWgt);
-            /*SELECT Bl_Name, Par_Name, Index FROM RR_PAR*/
-            rrParModel->setQuery("SELECT 'FL.' & Bl_Name & '_' & Par_Name AS Идентификатор, COUNT(Index) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name", rrParDB);
+            rrParModel->setQuery("SELECT ('FL.' || Bl_Name || '_' || Par_Name) AS Идентификатор, COUNT([Index]) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name", rrParDB);
             QTableView *rrParView = new QTableView(rrParWgt);
             rrParView->setModel(rrParModel);
             rrParView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -1274,7 +1273,10 @@ MainWindow::MainWindow(QWidget *parent)
                 QStringList paramList = param.split('_');
                 paramList[0] = paramList[0].mid(3);
                 qDebug() << paramList[0];
-                QString queryString = QString("SELECT IIF(ISNULL(Index), 0, '[' & Index & ']') AS Индекс, Val AS Значение FROM RR_PAR WHERE Bl_Name = '%1' AND Par_Name = '%2'").arg(paramList[0]).arg(paramList[1]);
+                if (paramList.count() < 2){
+                    return;
+                }
+                QString queryString = QString("SELECT CASE WHEN [Index] IS NULL THEN 0 ELSE '[' || [Index] || ']' END AS Индекс, Val AS Значение FROM RR_PAR WHERE Bl_Name = '%1' AND Par_Name = '%2'").arg(paramList[0]).arg(paramList[1]);
                 qDebug() << paramList;
                 rrMasParModel->setQuery(queryString, this->rrParDB);
                 qDebug() << rrMasParModel->rowCount();
@@ -1283,9 +1285,9 @@ MainWindow::MainWindow(QWidget *parent)
             QObject::connect(filterComboBox, &QComboBox::currentTextChanged, [rrParModel](const QString& text){
                 QString queryString;
                 if (text == "Все блоки" || text.isEmpty()){
-                    queryString = "SELECT 'FL.' & Bl_Name & '_' & Par_Name AS Идентификатор, COUNT(Index) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name";
+                    queryString = "SELECT ('FL.' || Bl_Name || '_' || Par_Name) AS Идентификатор, COUNT([Index]) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name";
                 } else{
-                    queryString = QString("SELECT 'FL.' & Bl_Name & '_' & Par_Name AS Идентификатор, COUNT(Index) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name HAVING Bl_Name = '%1'").arg(text);
+                    queryString = QString("SELECT ('FL.' || Bl_Name || '_' || Par_Name) AS Идентификатор, COUNT([Index]) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name HAVING Bl_Name = '%1'").arg(text);
                 }
                 rrParModel->setQuery(queryString, rrParDB);
             });
