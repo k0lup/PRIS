@@ -40,6 +40,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     //blockDirectRun.store(0);
+    QDir dir(QDir::homePath());
+    if (!dir.exists()) dir.mkpath(".");
     QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл конфигурации", "", "*.cfg");
     if (filePath.isEmpty() || QFileInfo(filePath).suffix().toUpper() != "CFG"){
         QString errorMessage(QString("CFG_NOT_OPEN"));
@@ -540,15 +542,9 @@ MainWindow::MainWindow(QWidget *parent)
        numWgt->show();
     });
 
-    QDir dir(QDir::homePath());
-    if (!dir.exists()) dir.mkpath(".");
-
     this->rrParDB = QSqlDatabase::addDatabase("QSQLITE", "RR PAR");
 
     QString dbFilePath = paramOnValues.value("РР_ПАРАМЕТРЫ");
-    if (dbFilePath.startsWith("~/")){
-        dbFilePath = QDir::home().filePath(dbFilePath.mid(2));
-    }
     if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
         QString errorMessage(QString("RR_DB_NOT_OPEN"));
         QMessageBox::critical(nullptr, "Ошибка", errorMessage);
@@ -577,9 +573,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     appcpParDB = QSqlDatabase::addDatabase("QSQLITE", "APPCP PAR");
     dbFilePath = paramValues.value("БАЗА_ДАННЫХ");
-    if (dbFilePath.startsWith("~/")){
-        dbFilePath = QDir::home().filePath(dbFilePath.mid(2));
-    }
     ipAppcpServ = paramValues.value("СЕРВЕР_АППЦП");
 
     if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
@@ -1743,6 +1736,10 @@ bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>&
         }
         if (param[1].contains("//")){
             param[1] = param[1].split("//")[0].trimmed();
+            if (param[1].startsWith("~/")){
+                param[1] = QDir::home().filePath(param[1].mid(2));
+            }
+
         }
         paramMap.insert(param[0], param[1]);
     }
