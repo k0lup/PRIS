@@ -1736,10 +1736,9 @@ bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>&
         }
         if (param[1].contains("//")){
             param[1] = param[1].split("//")[0].trimmed();
-            if (param[1].startsWith("~/")){
-                param[1] = QDir::home().filePath(param[1].mid(2));
-            }
-
+        }
+        if (param[1].startsWith("~/")){
+            param[1] = QDir::home().filePath(param[1].mid(2));
         }
         paramMap.insert(param[0], param[1]);
     }
