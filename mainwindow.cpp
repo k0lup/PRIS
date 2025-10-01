@@ -705,35 +705,8 @@ MainWindow::MainWindow(QWidget *parent)
         if (!directInfoWgt){
             directInfoWgt = new QWidget();
 
-            QString filePath = this->paramValues.value("БАЗА_ДАННЫХ");
-            if (!QFile::exists(filePath) || (QFileInfo(filePath).suffix().toUpper() != "MDB" && QFileInfo(filePath).suffix().toUpper() != "ACCDB")){
-                if (!QFile::exists(filePath))
-                    qDebug() << "DB NOT FIND";
-                else if (QFileInfo(filePath).suffix().toUpper() != "MDB")
-                    qDebug() << QFileInfo(filePath).suffix().toUpper() << " NOT *.MDB";
-                else if (QFileInfo(filePath).suffix().toUpper() != "ACCDB")
-                    qDebug() << QFileInfo(filePath).suffix().toUpper() << " NOT *.ACCDB";
-                return;
-            }
-
-            QSqlDatabase db;
-            db = QSqlDatabase::addDatabase("QODBC", "MS Access connection");
-            /*QString connectionString(QString("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%1;CharSet=Windows-1251")
-                                     .arg(filePath));*/
-            QString connectionString(QString("DRIVER={Driver do Microsoft Access (*.mdb)};DBQ=%1;CharSet=Windows-1251")
-                                                 .arg(filePath));
-            db.setDatabaseName(connectionString);
-
-            if (!db.open()){
-                return;
-            }
-
-
             QSqlQueryModel *model = new QSqlQueryModel(directInfoWgt);
-            model->setQuery("SELECT NumDir AS N, NameDir AS директива, FullNameDir AS назначение_директивы, Potok AS поток, KO as КО, TF AS ТФ, KF AS КФ FROM Dirs", db);
-            //model->setQuery("SELECT NumDir AS N, NameDir AS direct, FullNameDir AS naznach, Potok AS potok, KO as KOT, TF AS TAD, KF AS KAF FROM Dirs", db);
-            //model->setQuery("SELECT NumDir AS N, NameDir as директива, FullNameDir AS назначение директивы FROM Dirs", db);
-            //model->setQuery("SELECT * FROM Dirs", db);
+            model->setQuery("SELECT NumDir AS N, NameDir AS директива, FullNameDir AS назначение_директивы, Potok AS поток, KO as КО, TF AS ТФ, KF AS КФ FROM Dirs", this->appcpParDB);
             QTableView *tableView = new QTableView(directInfoWgt);
             tableView->setModel(model);
             tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -783,11 +756,8 @@ MainWindow::MainWindow(QWidget *parent)
             QObject::connect(toDown, &QPushButton::clicked, [tableView, model](){
                QItemSelectionModel *selectModel = tableView->selectionModel();
                QModelIndex index = tableView->currentIndex();
-               qDebug() << index.row();
                if (index.row() < 0 || index.row() >= model->rowCount()) index = model->index(0, 0);
-               qDebug() << index.row();
                int rowIndex = (index.row() + 1 >= model->rowCount()) ? index.row() : index.row() + 1;
-               qDebug() << rowIndex;
                index = model->index(rowIndex, 0);
                selectModel->clearSelection();
                selectModel->select(index, QItemSelectionModel::Select | QItemSelectionModel::Rows);
@@ -1062,30 +1032,6 @@ MainWindow::MainWindow(QWidget *parent)
     QObject::connect(setConnectNU, &QAction::triggered, dirRunner, &directRunner::connectNU);
     QObject::connect(disconnectNU, &QAction::triggered, dirRunner, &directRunner::disconnectNU);
     QObject::connect(paramRR, &QAction::triggered, [this, commandLine](){
-        //static QSqlDatabase db;
-        static bool init{false};
-        if (init){
-            init = false;
-
-            this->rrParDB = QSqlDatabase::addDatabase("QODBC", "RR PAR");
-
-            QString dbFilePath = paramOnValues.value("РР_ПАРАМЕТРЫ");
-            if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "MDB" && QFileInfo(dbFilePath).suffix().toUpper() != "ACCDB")) return;
-
-            if (!QFile::exists(dbFilePath)){
-                if (!QFile::copy(":/DB/EmptyBD.mdb", dbFilePath)){
-                    return;
-                }
-            }
-
-            //rrParDB.setDatabaseName(QString("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
-            rrParDB.setDatabaseName(QString("DRIVER={Driver do Microsoft Access (*.mdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
-
-            if (!rrParDB.open()){
-                qDebug() << "DB_NOT_OPEN";
-                return;
-            }
-        }
 
         static QWidget *rrParWgt;
         if (rrParWgt){
