@@ -18,6 +18,7 @@
 
 int main(int argc, char *argv[])
 {
+    static_assert(sizeof (float) == 4, "float must be 4 bytes!");
     qRegisterMetaType<directRunner::DIRECT_VARIABLE>("directRunner::DIRECT_VARIABLE");
     qRegisterMetaType<QTextCursor>("QTextCursor");
     qRegisterMetaType<QVector<int>>("QVector<int>");

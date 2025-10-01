@@ -3,6 +3,7 @@
 #include <QtWidgets>
 #include <QThread>
 #include <QDataStream>
+#include <cstring>
 
 #include "mainwindow.h"
 #include "constvalues.h"
@@ -3460,22 +3461,14 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             printInProt(errorMessage, "13", textStyle());
             return false;
         }
-        short count_zamer{0};
+        qint16 count_zamer{0};
         QByteArray data = respondNU.mid(2, 2);
-        errno_t err = memcpy_s(&count_zamer, sizeof(count_zamer), data.constData(), 2*sizeof(char));
-        if (err != 0){
-            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-            errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
-            printInProt(errorMessage, "13", textStyle());
-            qDebug() << "ERRROR: " << err;
-            return false;
-        }
+        std::memcpy(&count_zamer, data.constData(), sizeof(count_zamer));
 
         if (count_zamer != numContacts.length()){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (количество полученных замеров не соотвествует количеству запрошенных замеров)");
             printInProt(errorMessage, "13", textStyle());
-            qDebug() << "ERRROR: " << err;
             return false;
         }
         if (respondNU.length() < 4 + count_zamer * 6){
@@ -3488,23 +3481,15 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         for (int i = 0; i < count_zamer; ++i){
             data = respondNU.mid(4 + 6 * i, 6);
             QByteArray numPointData = data.left(2);
-            short numPoint{0};
-            errno_t err = memcpy_s(&numPoint, sizeof(numPoint), numPointData.constData(), 2*sizeof(char));
-            if (err != 0){
-                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
-                printInProt(errorMessage, "13", textStyle());
-                qDebug() << "ERRROR: " << err;
-                return false;
-            }
+            qint16 numPoint{0};
+            std::memcpy(&numPoint, numPointData.constData(), sizeof(numPoint));
             QByteArray resData = data.mid(2);
             float res{0};
-            err = memcpy_s(&res, sizeof(res), resData.constData(), sizeof(float));
-            if (err != 0){
+            std::memcpy(&res, resData.constData(), sizeof(res));
+            if (std::isnan(res) || std::isinf(res)){
                 errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
                 errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
                 printInProt(errorMessage, "13", textStyle());
-                qDebug() << "ERRROR: " << err;
                 return false;
             }
             results.insert(numPoint, res);
@@ -3704,22 +3689,14 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     printInProt(errorMessage, "13", textStyle());
                     return false;
                 }
-                short count_zamer{0};
+                qint16 count_zamer{0};
                 QByteArray data = respondNU.mid(2, 2);
-                errno_t err = memcpy_s(&count_zamer, sizeof(count_zamer), data.constData(), 2*sizeof(char));
-                if (err != 0){
-                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
-                    printInProt(errorMessage, "13", textStyle());
-                    qDebug() << "ERRROR: " << err;
-                    return false;
-                }
+                std::memcpy(&count_zamer, data.constData(), sizeof(count_zamer));
 
                 if (count_zamer != contacts.count() - failureContact.count() + 1){
                     errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
                     errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (количество полученных замеров не соотвествует количеству запрошенных замеров)");
                     printInProt(errorMessage, "13", textStyle());
-                    qDebug() << "ERRROR: " << err;
                     return false;
                 }
                 if (respondNU.length() < 4 + count_zamer * 6){
@@ -3732,23 +3709,15 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 for (int i = 0; i < count_zamer; ++i){
                     data = respondNU.mid(4 + 6 * i, 6);
                     QByteArray numPointData = data.left(2);
-                    short numPoint{0};
-                    errno_t err = memcpy_s(&numPoint, sizeof(numPoint), numPointData.constData(), 2*sizeof(char));
-                    if (err != 0){
-                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                        errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
-                        printInProt(errorMessage, "13", textStyle());
-                        qDebug() << "ERRROR: " << err;
-                        return false;
-                    }
+                    qint16 numPoint{0};
+                    std::memcpy(&numPoint, numPointData.constData(), sizeof(numPoint));
                     QByteArray resData = data.mid(2);
                     float res{0};
-                    err = memcpy_s(&res, sizeof(res), resData.constData(), sizeof(float));
-                    if (err != 0){
+                    std::memcpy(&res, resData.constData(), sizeof(res));
+                    if (std::isnan(res) || std::isinf(res)){
                         errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
                         errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
                         printInProt(errorMessage, "13", textStyle());
-                        qDebug() << "ERRROR: " << err;
                         return false;
                     }
                     results.insert(numPoint, res);
@@ -4188,12 +4157,11 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
                 QByteArray floatData = respondNU.mid(2);
                 float result;
-                errno_t err = memcpy_s(&result, sizeof(result), floatData.constData(), sizeof (float));
-                if (err != 0){
+                std::memcpy(&result, floatData.constData(), sizeof(result));
+                if (std::isnan(result) || std::isinf(result)){
                     errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
                     errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
                     printInProt(errorMessage, "13", textStyle());
-                    qDebug() << "ERRROR: " << err;
                     return false;
                 }
                 results << result;
@@ -4632,12 +4600,11 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
                 QByteArray floatData = respondNU.mid(2);
-                errno_t err = memcpy_s(&result, sizeof(result), floatData.constData(), sizeof (float));
-                if (err != 0){
+                std::memcpy(&result, floatData.constData(), sizeof(result));
+                if (std::isnan(result) || std::isinf(result)){
                     errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
                     errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
                     printInProt(errorMessage, "13", textStyle());
-                    qDebug() << "ERRROR: " << err;
                     return false;
                 }
 
@@ -5646,8 +5613,8 @@ bool directRunner::runCommandNU(const unsigned char command, int contact, bool s
             //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
             printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
             QByteArray floatData = respondNU.mid(2);
-            errno_t err = memcpy_s(&result, sizeof(result), floatData.constData(), sizeof (float));
-            if (err != 0){
+            std::memcpy(&result, floatData.constData(), sizeof(result));
+            if (std::isnan(result) || std::isinf(result)){
                 errorMessage.append("Ошибка в полученном ответе от НУ (не удалось получить значение)");
                 printInProt(errorMessage, "13", textStyle());
                 emit printMessageToManualWindow(errorMessage, "red");
@@ -5706,8 +5673,8 @@ bool directRunner::runCommandNU(const unsigned char command, int contact, bool s
         float result{0};
         printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
         QByteArray floatData = respondNU.mid(3);
-        errno_t err = memcpy_s(&result, sizeof(result), floatData.constData(), sizeof (float));
-        if (err != 0){
+        std::memcpy(&result, floatData.constData(), sizeof(result));
+        if (std::isnan(result) || std::isinf(result)){
             errorMessage.append("Ошибка в полученном ответе от НУ (неудалось получить значение)");
             printInProt(errorMessage, "13", textStyle());
             emit printMessageToManualWindow(errorMessage, "red");
