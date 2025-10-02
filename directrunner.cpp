@@ -208,6 +208,13 @@ void directRunner::startWork(){
        byteList.first().prepend(" ");
        if (byteList.last().at(byteList.last().length()-1) == '\n') byteList.last().chop(1);
        printInProt(byteList.join(" "), "23", textStyle(), true);
+
+       if (response.length() != 93){
+           printInProt(QString("Ошибка в размере сообщения по порту %1! Ожидалось 93 байта, получено: %2 байт!").arg(portAppcpOnlyRead, 8, 16, QChar('0')).arg(response.length()), "13", textStyle());
+           emit this->socketRRMes();
+           return;
+       }
+
        QByteArray slice = response.mid(13);
        QByteArray messageBA;
        for (unsigned char byte: slice){
@@ -222,9 +229,6 @@ void directRunner::startWork(){
            QString errorMessage = NUErrorCodeValue.value(code).errorMessage;
            if (NUErrorCodeValue.value(code).needByte) errorMessage.append(QString(" %1").arg(int(nextByte)));
            printInProt(QString("%1 : (%2) %3:%4:%5.(%6) %7 ( %8)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(int(response[11])).arg(response[8], 2, 10, QChar('0')).arg(response[7], 2, 10, QChar('0')).arg(response[10], 2, 10, QChar('0')).arg(int(response[9])/*, 3, 10, QChar('0')*/).arg(errorMessage).arg(codec->toUnicode(messageBA)), "22", textStyle());
-       }
-       if (this->waitNUMessage.load() == 0){
-           printInProt("Получен ответ без запроса", "13", textStyle());
        }
        emit this->socketRRMes();
     });
