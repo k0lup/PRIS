@@ -9,7 +9,10 @@
 #include "protmanager.h"
 #include "textsearcher.h"
 #include "constvalues.h"
-
+#include "helpbrowser.h"
+#include <QHelpEngine>
+#include <QHelpContentWidget>
+#include <QHelpIndexWidget>
 
 #include <QLocalSocket>
 
@@ -37,6 +40,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     //blockDirectRun.store(0);
+    QDir dir(QDir::homePath());
+    if (!dir.exists()) dir.mkpath(".");
     QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл конфигурации", "", "*.cfg");
     if (filePath.isEmpty() || QFileInfo(filePath).suffix().toUpper() != "CFG"){
         QString errorMessage(QString("CFG_NOT_OPEN"));
@@ -537,29 +542,27 @@ MainWindow::MainWindow(QWidget *parent)
        numWgt->show();
     });
 
-
-
-    this->rrParDB = QSqlDatabase::addDatabase("QODBC", "RR PAR");
+    this->rrParDB = QSqlDatabase::addDatabase("QSQLITE", "RR PAR");
 
     QString dbFilePath = paramOnValues.value("РР_ПАРАМЕТРЫ");
-    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "MDB" && QFileInfo(dbFilePath).suffix().toUpper() != "ACCDB")){
+    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
         QString errorMessage(QString("RR_DB_NOT_OPEN"));
         QMessageBox::critical(nullptr, "Ошибка", errorMessage);
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
     }
 
-    if (!QFile::exists(dbFilePath)){
+    /*if (!QFile::exists(dbFilePath)){
         if (!QFile::copy(":/DB/EmptyBD.mdb", dbFilePath)){
             QString errorMessage(QString("RR_DB_NOT_OPEN"));
             QMessageBox::critical(nullptr, "Ошибка", errorMessage);
             QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         }
-    }
+    }*/
 
 
     QFile(dbFilePath).setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     //rrParDB.setDatabaseName(QString("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
-    rrParDB.setDatabaseName(QString("DRIVER={Driver do Microsoft Access (*.mdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
+    rrParDB.setDatabaseName(dbFilePath);
 
     if (!rrParDB.open()){
         QString errorMessage(QString("RR_DB_NOT_OPEN"));
@@ -568,27 +571,20 @@ MainWindow::MainWindow(QWidget *parent)
         qDebug() << "DB_NOT_OPEN";
     }
 
-    appcpParDB = QSqlDatabase::addDatabase("QODBC", "APPCP PAR");
+    appcpParDB = QSqlDatabase::addDatabase("QSQLITE", "APPCP PAR");
     dbFilePath = paramValues.value("БАЗА_ДАННЫХ");
     ipAppcpServ = paramValues.value("СЕРВЕР_АППЦП");
 
-    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "MDB" && QFileInfo(dbFilePath).suffix().toUpper() != "ACCDB")){
+    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
         QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
         QMessageBox::critical(nullptr, "Ошибка", errorMessage);
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
     }
 
-    if (!QFile::exists(dbFilePath)){
-        if (!QFile::copy(":/DB/EmptyBD.mdb", dbFilePath)){
-            QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
-            QMessageBox::critical(nullptr, "Ошибка", errorMessage);
-            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
-        }
-    }
 
     //appcpParDB.setDatabaseName(QString("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
     QFile(dbFilePath).setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    appcpParDB.setDatabaseName(QString("DRIVER={Driver do Microsoft Access (*.mdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
+    appcpParDB.setDatabaseName(dbFilePath);
     if (!appcpParDB.open()){
         QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
         QMessageBox::critical(nullptr, "Ошибка", errorMessage);
@@ -702,35 +698,8 @@ MainWindow::MainWindow(QWidget *parent)
         if (!directInfoWgt){
             directInfoWgt = new QWidget();
 
-            QString filePath = this->paramValues.value("БАЗА_ДАННЫХ");
-            if (!QFile::exists(filePath) || (QFileInfo(filePath).suffix().toUpper() != "MDB" && QFileInfo(filePath).suffix().toUpper() != "ACCDB")){
-                if (!QFile::exists(filePath))
-                    qDebug() << "DB NOT FIND";
-                else if (QFileInfo(filePath).suffix().toUpper() != "MDB")
-                    qDebug() << QFileInfo(filePath).suffix().toUpper() << " NOT *.MDB";
-                else if (QFileInfo(filePath).suffix().toUpper() != "ACCDB")
-                    qDebug() << QFileInfo(filePath).suffix().toUpper() << " NOT *.ACCDB";
-                return;
-            }
-
-            QSqlDatabase db;
-            db = QSqlDatabase::addDatabase("QODBC", "MS Access connection");
-            /*QString connectionString(QString("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%1;CharSet=Windows-1251")
-                                     .arg(filePath));*/
-            QString connectionString(QString("DRIVER={Driver do Microsoft Access (*.mdb)};DBQ=%1;CharSet=Windows-1251")
-                                                 .arg(filePath));
-            db.setDatabaseName(connectionString);
-
-            if (!db.open()){
-                return;
-            }
-
-
             QSqlQueryModel *model = new QSqlQueryModel(directInfoWgt);
-            model->setQuery("SELECT NumDir AS N, NameDir AS директива, FullNameDir AS назначение_директивы, Potok AS поток, KO as КО, TF AS ТФ, KF AS КФ FROM Dirs", db);
-            //model->setQuery("SELECT NumDir AS N, NameDir AS direct, FullNameDir AS naznach, Potok AS potok, KO as KOT, TF AS TAD, KF AS KAF FROM Dirs", db);
-            //model->setQuery("SELECT NumDir AS N, NameDir as директива, FullNameDir AS назначение директивы FROM Dirs", db);
-            //model->setQuery("SELECT * FROM Dirs", db);
+            model->setQuery("SELECT NumDir AS N, NameDir AS директива, FullNameDir AS назначение_директивы, Potok AS поток, KO as КО, TF AS ТФ, KF AS КФ FROM Dirs", this->appcpParDB);
             QTableView *tableView = new QTableView(directInfoWgt);
             tableView->setModel(model);
             tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -780,11 +749,8 @@ MainWindow::MainWindow(QWidget *parent)
             QObject::connect(toDown, &QPushButton::clicked, [tableView, model](){
                QItemSelectionModel *selectModel = tableView->selectionModel();
                QModelIndex index = tableView->currentIndex();
-               qDebug() << index.row();
                if (index.row() < 0 || index.row() >= model->rowCount()) index = model->index(0, 0);
-               qDebug() << index.row();
                int rowIndex = (index.row() + 1 >= model->rowCount()) ? index.row() : index.row() + 1;
-               qDebug() << rowIndex;
                index = model->index(rowIndex, 0);
                selectModel->clearSelection();
                selectModel->select(index, QItemSelectionModel::Select | QItemSelectionModel::Rows);
@@ -861,6 +827,7 @@ MainWindow::MainWindow(QWidget *parent)
        static QWidget *paramAPPCPInfo;
        if (!paramAPPCPInfo){
            paramAPPCPInfo = new QWidget();
+           paramAPPCPInfo->setWindowTitle("Параметры АППЦП");
            //QSqlDatabase db;
            //QString dbFilePath = this->paramValues.value("БАЗА_ДАННЫХ");
            //if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "MDB" && QFileInfo(dbFilePath).suffix().toUpper() != "ACCDB")) return;
@@ -894,10 +861,15 @@ MainWindow::MainWindow(QWidget *parent)
                                     )");
            tableView->resizeColumnsToContents();
 
-           QPushButton *topBtn = new QPushButton("t", paramAPPCPInfo);
-           QPushButton *upBtn = new QPushButton("u", paramAPPCPInfo);
-           QPushButton *downBtn = new QPushButton("d", paramAPPCPInfo);
-           QPushButton *bottomBtn = new QPushButton("b", paramAPPCPInfo);
+           QPushButton *topBtn = new QPushButton(paramAPPCPInfo);
+           QPushButton *upBtn = new QPushButton(paramAPPCPInfo);
+           QPushButton *downBtn = new QPushButton(paramAPPCPInfo);
+           QPushButton *bottomBtn = new QPushButton(paramAPPCPInfo);
+
+           topBtn->setIcon(QIcon(":/img/img/arrowUPToEnd.png"));
+           upBtn->setIcon(QIcon(":/img/img/arrowUP.png"));
+           downBtn->setIcon(QIcon(":/img/img/arrowDown.png"));
+           bottomBtn->setIcon(QIcon(":/img/img/arrowDownToEnd.png"));
 
            QPushButton *findBtn = new QPushButton("найти", paramAPPCPInfo);
            QPushButton *copyBtn = new QPushButton("Копировать", paramAPPCPInfo);
@@ -1059,30 +1031,6 @@ MainWindow::MainWindow(QWidget *parent)
     QObject::connect(setConnectNU, &QAction::triggered, dirRunner, &directRunner::connectNU);
     QObject::connect(disconnectNU, &QAction::triggered, dirRunner, &directRunner::disconnectNU);
     QObject::connect(paramRR, &QAction::triggered, [this, commandLine](){
-        //static QSqlDatabase db;
-        static bool init{false};
-        if (init){
-            init = false;
-
-            this->rrParDB = QSqlDatabase::addDatabase("QODBC", "RR PAR");
-
-            QString dbFilePath = paramOnValues.value("РР_ПАРАМЕТРЫ");
-            if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "MDB" && QFileInfo(dbFilePath).suffix().toUpper() != "ACCDB")) return;
-
-            if (!QFile::exists(dbFilePath)){
-                if (!QFile::copy(":/DB/EmptyBD.mdb", dbFilePath)){
-                    return;
-                }
-            }
-
-            //rrParDB.setDatabaseName(QString("DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
-            rrParDB.setDatabaseName(QString("DRIVER={Driver do Microsoft Access (*.mdb)};DBQ=%1;CharSet=Windows-1251").arg(dbFilePath));
-
-            if (!rrParDB.open()){
-                qDebug() << "DB_NOT_OPEN";
-                return;
-            }
-        }
 
         static QWidget *rrParWgt;
         if (rrParWgt){
@@ -1092,18 +1040,22 @@ MainWindow::MainWindow(QWidget *parent)
 
         if (!rrParWgt){
             rrParWgt = new QWidget();
-            QPushButton *topBtn = new QPushButton("t", rrParWgt);
-            QPushButton *upBtn = new QPushButton("u", rrParWgt);
-            QPushButton *downBtn = new QPushButton("d", rrParWgt);
-            QPushButton *bottomBtn = new QPushButton("b", rrParWgt);
+            QPushButton *topBtn = new QPushButton(rrParWgt);
+            QPushButton *upBtn = new QPushButton(rrParWgt);
+            QPushButton *downBtn = new QPushButton(rrParWgt);
+            QPushButton *bottomBtn = new QPushButton(rrParWgt);
+
+            topBtn->setIcon(QIcon(":/img/img/arrowUPToEnd.png"));
+            upBtn->setIcon(QIcon(":/img/img/arrowUP.png"));
+            downBtn->setIcon(QIcon(":/img/img/arrowDown.png"));
+            bottomBtn->setIcon(QIcon(":/img/img/arrowDownToEnd.png"));
 
             QPushButton *findBtn = new QPushButton("найти", rrParWgt);
 
             QPushButton *copyBtn = new QPushButton("Копировать", rrParWgt);
 
             QSqlQueryModel *rrParModel = new QSqlQueryModel(rrParWgt);
-            /*SELECT Bl_Name, Par_Name, Index FROM RR_PAR*/
-            rrParModel->setQuery("SELECT 'FL.' & Bl_Name & '_' & Par_Name AS Идентификатор, COUNT(Index) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name", rrParDB);
+            rrParModel->setQuery("SELECT ('FL.' || Bl_Name || '_' || Par_Name) AS Идентификатор, COUNT([Index]) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name", rrParDB);
             QTableView *rrParView = new QTableView(rrParWgt);
             rrParView->setModel(rrParModel);
             rrParView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -1325,7 +1277,10 @@ MainWindow::MainWindow(QWidget *parent)
                 QStringList paramList = param.split('_');
                 paramList[0] = paramList[0].mid(3);
                 qDebug() << paramList[0];
-                QString queryString = QString("SELECT IIF(ISNULL(Index), 0, '[' & Index & ']') AS Индекс, Val AS Значение FROM RR_PAR WHERE Bl_Name = '%1' AND Par_Name = '%2'").arg(paramList[0]).arg(paramList[1]);
+                if (paramList.count() < 2){
+                    return;
+                }
+                QString queryString = QString("SELECT CASE WHEN [Index] IS NULL THEN 0 ELSE '[' || [Index] || ']' END AS Индекс, Val AS Значение FROM RR_PAR WHERE Bl_Name = '%1' AND Par_Name = '%2'").arg(paramList[0]).arg(paramList[1]);
                 qDebug() << paramList;
                 rrMasParModel->setQuery(queryString, this->rrParDB);
                 qDebug() << rrMasParModel->rowCount();
@@ -1334,9 +1289,9 @@ MainWindow::MainWindow(QWidget *parent)
             QObject::connect(filterComboBox, &QComboBox::currentTextChanged, [rrParModel](const QString& text){
                 QString queryString;
                 if (text == "Все блоки" || text.isEmpty()){
-                    queryString = "SELECT 'FL.' & Bl_Name & '_' & Par_Name AS Идентификатор, COUNT(Index) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name";
+                    queryString = "SELECT ('FL.' || Bl_Name || '_' || Par_Name) AS Идентификатор, COUNT([Index]) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name";
                 } else{
-                    queryString = QString("SELECT 'FL.' & Bl_Name & '_' & Par_Name AS Идентификатор, COUNT(Index) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name HAVING Bl_Name = '%1'").arg(text);
+                    queryString = QString("SELECT ('FL.' || Bl_Name || '_' || Par_Name) AS Идентификатор, COUNT([Index]) AS Длина_массива FROM RR_PAR GROUP BY BL_Name, Par_Name HAVING Bl_Name = '%1'").arg(text);
                 }
                 rrParModel->setQuery(queryString, rrParDB);
             });
@@ -1689,6 +1644,60 @@ MainWindow::MainWindow(QWidget *parent)
         emit sendTimeWorkAppcp(timeWork);
     }, Qt::QueuedConnection);
 
+    if (!paramValues.contains("СПРАВКА") || QFileInfo(paramValues.value("СПРАВКА")).suffix().toUpper() != "QHC" || !QFile(paramValues.value("СПРАВКА")).exists()){
+        QMessageBox::critical(nullptr, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении");
+    } else{
+        qDebug() << paramValues.value("СПРАВКА");
+        QHelpEngine *helpEngine = new QHelpEngine(paramValues.value("СПРАВКА"), this);
+        if (!helpEngine->setupData()) {
+            QMessageBox::critical(nullptr, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении");
+        } else{
+            QObject::connect(referense, &QAction::triggered, this, [this, helpEngine](){
+                static QSplitter *splitter;
+                static bool init{false};
+                if (!init){
+                    QHelpContentWidget *contentWidget = helpEngine->contentWidget();
+
+                    // Виджет индекса (поиск по ключевым словам)
+                    QHelpIndexWidget *indexWidget = helpEngine->indexWidget();
+
+                    // Браузер для отображения страниц справки
+                    // Браузер для отображения страниц справки
+                    HelpBrowser *textBrowser = new HelpBrowser(helpEngine);
+
+                    // Используем лямбду, чтобы сигналы и слоты совпадали
+                    QObject::connect(contentWidget, &QHelpContentWidget::linkActivated,
+                                     [=](const QUrl &url){
+                                         QByteArray html = helpEngine->fileData(url);
+                                         textBrowser->setSource(url);
+                                     });
+
+                    QObject::connect(indexWidget, &QHelpIndexWidget::linkActivated,
+                                     [=](const QUrl &url){
+                                         QByteArray html = helpEngine->fileData(url);
+                                         textBrowser->setSource(url);
+                                     });
+
+                    QObject::connect(textBrowser, &QTextBrowser::anchorClicked, [=](const QUrl& url){
+                        QByteArray html = helpEngine->fileData(url);
+                        textBrowser->setHtml(QString::fromUtf8(html));
+                    });
+
+                    // Разделитель для панели содержания и текста
+                    splitter = new QSplitter();
+                    splitter->addWidget(contentWidget);
+                    splitter->addWidget(textBrowser);
+                    splitter->setStretchFactor(1, 1);
+                    init = true;
+                }
+
+                splitter->resize(800, 600);
+                splitter->setWindowTitle("APPCP HELP");
+                splitter->show();
+            });
+        }
+    }
+
     QString TimeControlPath;
     if (paramValues.contains("КОНТР_ВРЕМЕНИ")){
         TimeControlPath = paramValues.value("КОНТР_ВРЕМЕНИ");
@@ -1738,6 +1747,9 @@ bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>&
         }
         if (param[1].contains("//")){
             param[1] = param[1].split("//")[0].trimmed();
+        }
+        if (param[1].startsWith("~/")){
+            param[1] = QDir::home().filePath(param[1].mid(2));
         }
         paramMap.insert(param[0], param[1]);
     }

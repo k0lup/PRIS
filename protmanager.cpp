@@ -1,4 +1,5 @@
 #include "protmanager.h"
+#include <cstring>
 #include "mainwindow.h"
 #include "directrunner.h"
 #include "constvalues.h"
@@ -155,7 +156,7 @@ QString ProtManager::getAllFileDate(){
     }
 
     QByteArray readMas;
-    int curSeek = 0;
+    qint32 curSeek = 0;
     readFile.seek(curSeek);
     QString protInfo;
     while (!readFile.atEnd()){
@@ -181,12 +182,8 @@ QString ProtManager::getAllFileDate(){
                 qDebug() << "Error convert len to int";
                 return QString();
             }*/
-            int len{0};
-            errno_t err = memcpy_s(&len, sizeof(len), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 len{0};
+            std::memcpy(&len, readMas.constData(), sizeof(len));
             curSeek += 2 + len;
             //readFile.seek(curSeek);
             readFile.seek(0);
@@ -202,12 +199,8 @@ QString ProtManager::getAllFileDate(){
                 qDebug() << "Error convert len to int";
                 return QString();
             }*/
-            int len{0};
-            errno_t err = memcpy_s(&len, sizeof(len), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 len{0};
+            std::memcpy(&len, readMas.constData(), sizeof(len));
             curSeek += 3 + len;
             readFile.seek(curSeek);
         } else if (readMas[0] == char(0xFE)){
@@ -221,12 +214,8 @@ QString ProtManager::getAllFileDate(){
                 qDebug() << "Error convert len to int";
                 return QString();
             }*/
-            int len{0};
-            errno_t err = memcpy_s(&len, sizeof(len), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 len{0};
+            std::memcpy(&len, readMas.constData(), sizeof(len));
             readMas.clear();
             readMas.reserve(len);
             //readFile.read(readMas.data(), len);
@@ -237,12 +226,8 @@ QString ProtManager::getAllFileDate(){
                 qDebug() << "Erroro convert numPotok to int";
                 return QString();
             }*/
-            int numPotok{0};
-            err = memcpy_s(&numPotok, sizeof(numPotok), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 numPotok{0};
+            std::memcpy(&numPotok, readMas.constData(), sizeof(numPotok));
             readMas = readMas.mid(2);
             QString styleString = codec->toUnicode(readMas);
             //qDebug() << styleString;
@@ -328,12 +313,8 @@ QString ProtManager::getAllFileDate(){
         } else if (readMas[0] == char(0x03)){
             readMas.clear();
             readMas = readFile.read(2);
-            int len{0};
-            errno_t err = memcpy_s(&len, sizeof(len), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 len{0};
+            std::memcpy(&len, readMas.constData(), sizeof(len));
             readMas.clear();
             readMas = readFile.read(len);
             readMas = readMas.mid(4);
@@ -397,18 +378,14 @@ QString ProtManager::getNewFileDate(){
             readFile.seek(curSeek);
             //readFile.read(readMas.data(), 2);
             readMas = readFile.read(2);
-            bool ok{false};
-            /*int len = readMas.toInt(&ok);
+            /*bool ok{false};
+            int len = readMas.toInt(&ok);
             if (!ok){
                 qDebug() << "Error convert len to int";
                 return QString();
             }*/
-            int len{0};
-            errno_t err = memcpy_s(&len, sizeof(len), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 len{0};
+            std::memcpy(&len, readMas.constData(), sizeof(len));
             curSeek += 2 + len;
             //readFile.seek(curSeek);
             readFile.seek(0);
@@ -418,18 +395,14 @@ QString ProtManager::getNewFileDate(){
             readMas.reserve(2);
             //readFile.read(readMas.data(), 2);
             readMas = readFile.read(2);
-            bool ok{false};
-            /*int len = readMas.toInt(&ok);
+            /*bool ok{false};
+            int len = readMas.toInt(&ok);
             if (!ok){
                 qDebug() << "Error convert len to int";
                 return QString();
             }*/
-            int len{0};
-            errno_t err = memcpy_s(&len, sizeof(len), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 len{0};
+            std::memcpy(&len, readMas.constData(), sizeof(len));
             curSeek += 3 + len;
             readFile.seek(curSeek);
         } else if (readMas[0] == char(0xFE)){
@@ -443,12 +416,8 @@ QString ProtManager::getNewFileDate(){
                 qDebug() << "Error convert len to int";
                 return QString();
             }*/
-            int len{0};
-            errno_t err = memcpy_s(&len, sizeof(len), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 len{0};
+            std::memcpy(&len, readMas.constData(), sizeof(len));
             readMas.clear();
             readMas.reserve(len);
             //readFile.read(readMas.data(), len);
@@ -459,12 +428,8 @@ QString ProtManager::getNewFileDate(){
                 qDebug() << "Erroro convert numPotok to int";
                 return QString();
             }*/
-            int numPotok{0};
-            err = memcpy_s(&numPotok, sizeof(numPotok), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 numPotok{0};
+            std::memcpy(&numPotok, readMas.constData(), sizeof(numPotok));
             readMas = readMas.mid(2);
             QString styleString = codec->toUnicode(readMas);
             //qDebug() << styleString;
@@ -550,12 +515,8 @@ QString ProtManager::getNewFileDate(){
         } else if (readMas[0] == char(0x03)){
             readMas.clear();
             readMas = readFile.read(2);
-            int len{0};
-            errno_t err = memcpy_s(&len, sizeof(len), readMas.constData(), 2*sizeof(char));
-            if (err != 0){
-                qDebug() << "ERRROR: " << err;
-                return QString();
-            }
+            qint16 len{0};
+            std::memcpy(&len, readMas.constData(), sizeof(len));
             readMas.clear();
             readMas = readFile.read(len);
             readMas = readMas.mid(4);
