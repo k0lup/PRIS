@@ -40,6 +40,8 @@ public:
         SP,
         STOP,
         UV,
+        PNC,
+        PNC_R,
         NO_DIRECT
     };
     struct Direct{

@@ -117,6 +117,8 @@ DirectParser::TypeDirect DirectParser::getDir(const QString& direct){
     else if (direct == "СП")        tDir = TypeDirect::SP;
     else if (direct == "СТОП")      tDir = TypeDirect::STOP;
     else if (direct == "УВ")        tDir = TypeDirect::UV;
+    else if (direct == "ПНЦ")       tDir = TypeDirect::PNC;
+    else if (direct == "ПНЦ_Р")     tDir = TypeDirect::PNC_R;
     else                            tDir = TypeDirect::NO_DIRECT;
 
     return tDir;
@@ -270,6 +272,8 @@ bool DirectParser::isOperatorDirect(DirectParser::TypeDirect dirType){
     case(DirectParser::TypeDirect::SP)          :   result = true;  break;
     case(DirectParser::TypeDirect::STOP)        :   result = false; break;
     case(DirectParser::TypeDirect::UV)          :   result = true;  break;
+    case(DirectParser::TypeDirect::PNC)         :   result = false; break;
+    case(DirectParser::TypeDirect::PNC_R)       :   result = true;  break;
     default                                     :   result = false; break;
     }
     return result;
@@ -309,6 +313,8 @@ bool DirectParser::isTableDirect(DirectParser::TypeDirect dirType){
     case(DirectParser::TypeDirect::SP)          :   result = false; break;
     case(DirectParser::TypeDirect::STOP)        :   result = true;  break;
     case(DirectParser::TypeDirect::UV)          :   result = true;  break;
+    case(DirectParser::TypeDirect::PNC)         :   result = true;  break;
+    case(DirectParser::TypeDirect::PNC_R)       :   result = false; break;
     default                                     :   result = false; break;
     }
     return result;
@@ -333,6 +339,7 @@ bool DirectParser::isVariantDirect(TypeDirect dirType){
     case(DirectParser::TypeDirect::SINONIM)     :   result = true;  break;
     case(DirectParser::TypeDirect::SOOBCH)      :   result = true;  break;
     case(DirectParser::TypeDirect::UV)          :   result = true;  break;
+    case(DirectParser::TypeDirect::PNC_R)       :   result = true;  break;
     default                                     :   result = false; break;
     }
     return result;

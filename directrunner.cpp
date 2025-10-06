@@ -5326,6 +5326,947 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         break;
     }
     case (DirectParser::TypeDirect::UV) : qDebug() << "пока не реализовано"; break;
+    case (DirectParser::TypeDirect::PNC) : {
+            if (dir.testParamDirect.count() > 101){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("НЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            if (dir.testParamDirect.length() < 3 || dir.testParamDirect[1][1].length() != 1 || dir.testParamDirect[2][1].length() < 1){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append(QString("\t\t\tНедопустимое количество параметров директивы %1").arg(dir.directive));
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            if (socketCanal1->state() != QAbstractSocket::ConnectedState || socketCanal2->state() != QAbstractSocket::ConnectedState){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\tНЕТ СВЯЗИ С НУ");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+
+            int zdr = 1;
+            QStringList param = dir.testParamDirect[0][1];
+            if (param.length() > 0){
+                bool ok{false};
+                param[0].toInt(&ok);
+                if (ok){
+                    zdr = param[0].toInt();
+                    param.removeFirst();
+                }
+            }
+            /*bool stopFlag = false;*/
+            reactType reactMode = reactType::NO_REACT;
+            if (param.length() > 0){
+                if (param[0] == "СТОП"){
+                    //stopFlag = true;
+                    reactMode = reactType::STOP;
+                } else if (param[0] == "СЛЕД"){
+                    reactMode = reactType::SLED;
+                }
+                else{
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\tНЕДОПУСТИМОЕ ЗНАЧЕНИЕ ДЛЯ РЕАК");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+            }
+
+            printMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" "));
+            printInProt(printMessage, "0", textStyle());
+
+            QString point1 = dir.testParamDirect[1][1][0];
+            QStringList points;
+            QList<double> ndops;
+            QList<double> vdops;
+            QStringList rrPars;
+            points << point1;
+            ndops << -1;
+            vdops << -1;
+            rrPars << "";
+            for (int i = 2; i < dir.testParamDirect.length(); ++i){
+                param = dir.testParamDirect[i][1];
+                if (param.length() > 4){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("\t\t\tНЕДОПУСТИМОЕ КОЛИЧЕСТВО АРГУМЕНТОВ В СТРОКЕ %1").arg(i + 1));
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                if (points.contains(param[0])){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("\t\tНедопустимо повторное подключение точки (%1)").arg(param[0]));
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                points << param[0];
+                ndops << -1;
+                vdops << -1;
+                rrPars << "";
+                param.removeFirst();
+                if (param.length() > 0){
+                    bool ok{false};
+                    param[0].toDouble(&ok);
+                    if (ok){
+                        ndops[i - 1] = param[0].toDouble();
+                        param.removeFirst();
+                    }
+                    if (param.length() > 0){
+                        param[0].toDouble(&ok);
+                        if (ok){
+                            vdops[i - 1] = param[0].toDouble();
+                            if (ndops[i - 1] > vdops[i - 1]){
+                                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                                errorMessage.append(QString("Нижний допуск не должен превышвать верхний (точка: %1)").arg(points.last()));
+                                printInProt(errorMessage, "13", textStyle());
+                                return false;
+                            }
+                            param.removeFirst();
+                        }
+                    }
+                    if (param.length() > 0 && param[0][0] == "="){
+                        rrPars[i - 1] = param[0].mid(1);
+                        param.removeFirst();
+                    }
+                    if (param.length() > 0){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append(QString("\t\t\tПОСТОРОННЯЯ ИНФОРМАЦИЯ В КОНЦЕ СТРОКИ (СТРОКА %1)").arg(i + 1));
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                }
+            }
+
+            QList<int> numContacts;
+            for (int i = 0; i < points.length(); ++i){
+                if (!appcpParam.contains(points[i])){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("\t\t\tНет идентификатора в БД (%1)").arg(points[i]));
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                int numCont;
+                if (appcpParam.value(points[i]).kont != 101) numCont = (appcpParam.value(points[i]).raz - 1) * 50 + appcpParam.value(points[i]).kont - 1;
+                else numCont = 100;
+                numContacts << numCont;
+
+                if (!rrPars[i].isEmpty()){
+                    RRParam rrPar(rrPars[i]);
+                    if (!rrPar.isValid()){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append(QString("\t\tРР параметр %1 не является валидным!").arg(rrPars[i]));
+                        errorMessage.append(rrPar.getErrorText());
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                }
+            }
+
+            QByteArray cBA;
+            cBA.clear();
+            cBA.append(char(0x0a));
+            bool status{false};
+            sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (ost_flag.load() == 1){
+                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                QByteArray cBAReset;
+                cBAReset.clear();
+                cBAReset.append(char(0x0a));
+                bool statusReset{false};
+                sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                goto end_metka;
+            }
+            if (!status) return false;
+            if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+                printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+                printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+            }
+            else if (respondNU.length() != 2){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            else if (respondNU.at(1) == -1){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            cBA.clear();
+
+            cBA.append(char(0x01));
+            cBA.append(char(1));
+            cBA.append(char(numContacts[0]));
+            sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (ost_flag.load() == 1){
+                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                QByteArray cBAReset;
+                cBAReset.clear();
+                cBAReset.append(char(0x0a));
+                bool statusReset{false};
+                sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                goto end_metka;
+            }
+
+            if (!status) return false;
+            if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+                printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+                printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+            }
+            else if (respondNU.length() != 2){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            else if (respondNU.at(1) == -1){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            cBA.clear();
+            QList<float> results;
+            //QList<int> diap;
+            QString tableSplit("|----------------|----------------|-----------|-----------|-----------|-------------------------|\n");
+            QString table;
+            table.append("|----------------|----------------|-----------|-----------|-----------|-------------------------|\n");
+            table.append("|      ИД1(-)    |      ИД2(+)    |  знач.(В) |  н.доп.   |   в.доп.  |           ПАР           |\n");
+            table.append("|----------------|----------------|-----------|-----------|-----------|-------------------------|\n");
+            printInProt(table, "0", textStyle());
+            table.clear();
+
+            for (int i = 1; i < numContacts.length(); ++i){
+                cBA.append(char(0x02));
+                cBA.append(char(1));
+                cBA.append(char(numContacts[i]));
+                sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                if (ost_flag.load() == 1){
+                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    QByteArray cBAReset;
+                    cBAReset.clear();
+                    cBAReset.append(char(0x0a));
+                    bool statusReset{false};
+                    sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                    //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                    goto end_metka;
+                }
+
+                if (!status) return false;
+                if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                    //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+                    printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+                    printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+                }
+                else if (respondNU.length() != 2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                else if (respondNU.at(1) == -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                cBA.clear();
+
+                /*int diapVal;
+
+                if (ndops[i] == -1 || (ndops[i] <= 0.05)) diapVal = 0;
+                else if (ndops[i] <= 1000.0) diapVal = 1;
+                else if (ndops[i] <= 5000.0) diapVal = 2;
+                else diapVal = 3;
+
+                diap.append(diapVal);*/
+
+
+                    cBA.append(char(0x06));
+                    QThread::sleep(zdr);
+                    sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                    if (ost_flag.load() == 1){
+                        if (dir.numDirect != -1) programs.last().numDir -= 1;
+                        QByteArray cBAReset;
+                        cBAReset.clear();
+                        cBAReset.append(char(0x0a));
+                        bool statusReset{false};
+                        sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                        //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                        goto end_metka;
+                    }
+                if (!status) return false;
+                if (respondNU.length() == 3 + 4 && respondNU.at(1) == 0){
+                    //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+                    printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+                    QByteArray floatData = respondNU.mid(3);
+                    float result;
+                    std::memcpy(&result, floatData.constData(), sizeof(result));
+                    if (std::isnan(result) || std::isinf(result)){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    results << result;
+                    printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2\n  Un = %4   res = %3").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])).arg(result).arg(int(respondNU[2])), "35", textStyle(), true, true);
+                    if (int(respondNU[2]) == 0){
+                        printInProt(QString("НЕТ НАПРЯЖЕНИЯ НА ВХОДАХ АППЦП"), "13", textStyle());
+                        if (constValues::isImitMode.load() != 1 && reactMode == reactType::STOP){
+                            stopProg = true;
+                        }
+                            stopMessageStr = "НЕТ НАПРЯЖЕНИЯ НА ВХОДАХ АППЦП";
+                            GL_NORM_STATUS = false;
+                    }
+
+                    if (!rrPars[i].isEmpty()){
+                        qDebug() << rrPars[i];
+                        RRParam rrPar(rrPars[i]);
+                        if (!rrPar.setValue(result)){
+                            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                            errorMessage.append(QString("\t\tНе удалось записать значение РР параметра!").arg(rrPar.getFullParamName()));
+                            if (rrPar.isHasError()) errorMessage.append("\t\t\t" + rrPar.getErrorText());
+                            printInProt(errorMessage, "13", textStyle());
+                            return false;
+                        }
+                    }
+                }
+                else if (respondNU.length() != 3 + 4){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 6 байт)");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                else if (respondNU.at(1) == -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+
+                cBA.clear();
+
+                cBA.append(char(0x02));
+                cBA.append(char(0));
+                cBA.append(char(numContacts[i]));
+
+                sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                if (ost_flag.load() == 1){
+                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    QByteArray cBAReset;
+                    cBAReset.clear();
+                    cBAReset.append(char(0x0a));
+                    bool statusReset{false};
+                    sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                    //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                    goto end_metka;
+                }
+                if (!status) return false;
+                if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                    //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+                    printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+                    printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+                }
+                else if (respondNU.length() != 2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                else if (respondNU.at(1) == -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                cBA.clear();
+
+                int row = i - 1;
+                QStringList infoSections;
+                infoSections << points[0] << points[row + 1] /*<< QString::number(results[row], 'f', 6)*/;
+                infoSections << QString::number(results[row], 'f', 4);
+                if (ndops[row + 1] >= 0) infoSections << QString::number(ndops[row + 1]);
+                else infoSections << "";
+                if (vdops[row + 1] >= 0) infoSections << QString::number(vdops[row + 1]);
+                else infoSections << "";
+                infoSections << rrPars[row + 1];
+                QString tableRow = "|";
+                for (int i = 0; i < infoSections.length(); i++){
+                    QString infoSection = infoSections[i];
+                    if (infoSection.length() > tableSplit.split("\n")[0].split("|")[i + 1].length()){
+                        infoSection = infoSection.left(tableSplit.split("\n")[0].split("|")[i + 1].length());
+                    }
+                    int needSpace = tableSplit.split("\n")[0].split("|")[i + 1].length() - infoSection.length();
+                    int needSpaceLeft = needSpace / 2 + needSpace % 2;
+                    int needSpaceRight = needSpace / 2;
+                    infoSection.prepend(QString(needSpaceLeft, QChar(' ')));
+                    infoSection.append(QString(needSpaceRight, QChar(' ')));
+                    tableRow.append(infoSection + "|");
+                }
+                table.append(tableRow);
+                /*if (diap[row] == 0){
+                    QString tempTableSplit = tableSplit;
+                    tempTableSplit = tempTableSplit.replace("-", " ");
+                    QStringList tableSplitList = tempTableSplit.split("|");
+                    int lenCol = tableSplitList[2 + 1].length();
+                    tableSplitList[2 + 1] = QString("(") + QString::number(infoSections[2].toDouble() * 1000, 'g', 2) + " Ом)";
+                    int needSpace = lenCol - tableSplitList[2 + 1].length();
+                    int needSpaceLeft = needSpace / 2 + needSpace % 2;
+                    int needSpaceRight = needSpace / 2;
+                    tableSplitList[2+1].prepend(QString(needSpaceLeft, QChar(' ')));
+                    tableSplitList[2+1].append(QString(needSpaceRight, QChar(' ')));
+                    tableRow = tableSplitList.join("|");
+                    table.append("\n" + tableRow);
+                }*/
+                if (constValues::isImitMode.load() != 1 && ((results.value(/*numContacts[row]*/row) < ndops[row + 1] && ndops[row + 1] != -1) || (results.value(/*numContacts[row]*/row) > vdops[row + 1] && vdops[row + 1] != -1))){
+                    if (reactMode == reactType::STOP) {
+                        stopProg = true;
+                        stopMessageStr = QString("ДИРЕКТИВА %1: ЕСТЬ ТОЧКИ НЕ В ДОПУСКЕ").arg(dir.directive);
+                    }
+                    /*if (reactMode != reactType::SLED)*/ this->GL_NORM_STATUS = false;
+                    printInProt(table, "13", textStyle());
+                    table.clear();
+                } else{
+                    printInProt(table, "0", textStyle());
+                    table.clear();
+                }
+                table.append(tableSplit);
+                printInProt(table, "0", textStyle());
+                table.clear();
+            }
+
+            cBA.append(char(0x01));
+            cBA.append(char(0));
+            cBA.append(char(numContacts[0]));
+
+            sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (ost_flag.load() == 1){
+                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                QByteArray cBAReset;
+                cBAReset.clear();
+                cBAReset.append(char(0x0a));
+                bool statusReset{false};
+                sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                goto end_metka;
+            }
+            if (!status) return false;
+            if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+                printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+                printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+            }
+            else if (respondNU.length() != 2){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            else if (respondNU.at(1) == -1){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+
+            cBA.clear();
+            cBA.append(char(0x0a));
+            sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (ost_flag.load() == 1){
+                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                QByteArray cBAReset;
+                cBAReset.clear();
+                cBAReset.append(char(0x0a));
+                bool statusReset{false};
+                sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                goto end_metka;
+            }
+            if (!status) return false;
+            if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+                printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+                printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+            }
+            else if (respondNU.length() != 2){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            else if (respondNU.at(1) == -1){
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            cBA.clear();
+
+
+            /*for (int row = 0; row < results.count(); ++row){
+
+            }*/
+
+            if (GL_NORM_STATUS){
+                printInProt(QString("\t\t\t%1 норма операции").arg(dir.directive), "0", textStyle());
+            } else{
+                printInProt(QString("\t\t\t%1 ненорма операции").arg(dir.directive), "13", textStyle());
+                if (reactMode == reactType::SLED) GL_NORM_STATUS = true;
+            }
+            break;
+        }
+        case (DirectParser::TypeDirect::PNC_R) :{
+                if (dir.testParamDirect.length() != 1 || dir.testParamDirect[0].length() != 2 || dir.testParamDirect[0][1].length() < 2 || dir.testParamDirect[0][1].length() > 6){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("\t\t\tНедопустимое количество параметров директивы %1").arg(dir.directive));
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                if (socketCanal1->state() != QAbstractSocket::ConnectedState || socketCanal2->state() != QAbstractSocket::ConnectedState){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\tНЕТ СВЯЗИ С НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                QStringList param = dir.testParamDirect[0][1];
+                bool ok{false};
+                int zdr = 1;
+                param[0].toInt(&ok);
+                if (dir.testParamDirect[0][1].length() > 2 && ok){
+                    zdr = dir.testParamDirect[0][1][0].toInt();
+                    param.removeFirst();
+                }
+                QString par1;
+                QString par2;
+
+                par1 = param[0];
+                par2 = param[1];
+
+                if (!appcpParam.contains(par1) || !appcpParam.contains(par2)){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\tНет идентификатора в БД");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                if (par1 == par2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("Недопустимо повторное подключение точик (%1)").arg(par1));
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                int numCont1;
+                int numCont2;
+                if (appcpParam.value(par1).kont != 101) numCont1 = (appcpParam.value(par1).raz - 1) * 50 + appcpParam.value(par1).kont - 1;
+                else numCont1 = 100;
+                if (appcpParam.value(par2).kont != 101) numCont2 = (appcpParam.value(par2).raz - 1) * 50 + appcpParam.value(par2).kont - 1;
+                else numCont2 = 100;
+
+                if (numCont1 == numCont2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\tДля замера необходимо использовать два РАЗЛИЧНЫХ контакта");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+
+                /*qDebug() << "CONT1: " << numCont1;
+                qDebug() << "CONT2: " << numCont2;
+                qDebug() << appcpParam.value("ZP_KORPUS").raz;
+                qDebug() << appcpParam.value("ZP_KORPUS").kont;*/
+
+                double nDop{-1};
+                double vDop{-1};
+                if (param.length() > 2){
+                    param[2].toFloat(&ok);
+                    if (ok){
+                        nDop = param[2].toFloat();
+                        if (param.length() > 3){
+                            param[3].toFloat(&ok);
+                            if (ok){
+                                vDop = param[3].toFloat(&ok);
+                                param.removeAt(3);
+                            }
+                        }
+                        param.removeAt(2);
+                    }
+                }
+
+                if (nDop > vDop && vDop != -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\tНижний допуск не должен превышать верхний!");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                //qDebug() << "NDOP: " << nDop;
+                //qDebug() << "VDOP: " << vDop;
+
+
+
+
+                float result{0};
+
+
+                printMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" "));
+                printInProt(printMessage, "0", textStyle());
+                char c[4];// = [0x0D, 0x01];
+                c[0] = char(0x0A);
+                bool status;
+                sendMessageToNU(c, 1, &status);
+                if (ost_flag.load() == 1){
+                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    QByteArray cBAReset;
+                    cBAReset.clear();
+                    cBAReset.append(char(0x0a));
+                    bool statusReset{false};
+                    sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                    //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                    goto end_metka;
+                }
+                if (!status) return false;
+                if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                    //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
+                    printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
+                    printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+                }
+                else if (respondNU.length() != 2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                else if (respondNU.at(1) == -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                c[0] = char(0x01);
+                c[1] = char(1);
+                c[2] = char(numCont1);
+                sendMessageToNU(c, 3, &status);
+                if (ost_flag.load() == 1){
+                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    QByteArray cBAReset;
+                    cBAReset.clear();
+                    cBAReset.append(char(0x0a));
+                    bool statusReset{false};
+                    sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                    //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                    goto end_metka;
+                }
+                if (!status) return false;
+                if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                    //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
+                    printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
+                    printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+                }
+                else if (respondNU.length() != 2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                else if (respondNU.at(1) == -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+
+                c[0] = char(0x02);
+                c[1] = char(1);
+                c[2] = char(numCont2);
+                sendMessageToNU(c, 3, &status);
+                if (ost_flag.load() == 1){
+                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    QByteArray cBAReset;
+                    cBAReset.clear();
+                    cBAReset.append(char(0x0a));
+                    bool statusReset{false};
+                    sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                    //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                    goto end_metka;
+                }
+                if (!status) return false;
+                if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                    //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
+                    printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
+                    printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+                }
+                else if (respondNU.length() != 2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                else if (respondNU.at(1) == -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+
+                    c[0] = char(0x06);
+                    QThread::sleep(zdr);
+                    sendMessageToNU(c, 1, &status);
+                    if (ost_flag.load() == 1){
+                        if (dir.numDirect != -1) programs.last().numDir -= 1;
+                        QByteArray cBAReset;
+                        cBAReset.clear();
+                        cBAReset.append(char(0x0a));
+                        bool statusReset{false};
+                        sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                        //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                        goto end_metka;
+                    }
+
+                if (!status) return false;
+                if (respondNU.length() == 3 + 4 && respondNU.at(1) == 0){
+                    //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
+                    printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
+                    QByteArray floatData = respondNU.mid(3);
+                    std::memcpy(&result, floatData.constData(), sizeof(result));
+                    if (std::isnan(result) || std::isinf(result)){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+
+                    printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2\n   res = %3").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])).arg(result), "35", textStyle(), true, true);
+                    if (int(respondNU[2]) == 0){
+                        printInProt(QString("НЕТ НАПРЯЖЕНИЯ НА ВХОДАХ АППЦП"), "13", textStyle());
+                        if (constValues::isImitMode.load() != 1){
+                            stopProg = true;
+                        }
+                            stopMessageStr = "НЕТ НАПРЯЖЕНИЯ НА ВХОДАХ АППЦП";
+                            //GL_NORM_STATUS = false;
+                    }
+                }
+                else if (respondNU.length() != 3 + 4){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 6 байт)");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                else if (respondNU.at(1) == -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+
+                QString rrParName;
+                if (param.length() > 2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n\t\t\t");
+                    if (param[2][0] != "="){
+                        errorMessage.append("РР параметр должен записываться со знаком =");
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    rrParName = param[2].mid(1);
+
+                    RRParam rrPar(rrParName);
+                    if (rrPar.isHasError()){
+                        errorMessage.append(rrPar.getErrorText());
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    if (!rrPar.isExist()){
+                        if (rrPar.isHasError()) errorMessage.append(rrPar.getErrorText());
+                        else errorMessage.append("РР ПАРАМЕТР ДЛЯ ЗАПИСИ РЕЗУЛЬТАТА ЕЩЕ НЕ СОЗДАН");
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    rrPar.setValue(result);
+                    if (rrPar.isHasError()){
+                        errorMessage.append(rrPar.getErrorText());
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    /*QRegularExpression regex(R"(^FL.([A-Za-z0-9]{1,3})_?([A-Za-z0-9_\-\/\.]{1,15})?(?:\[(\d+)\])?$)");
+                    QRegularExpressionMatch match = regex.match(rrPar);
+                    if (!match.hasMatch()){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append("\t\t\tНедопустимое имя РР параметра для записи результата");
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    QString errorString;
+                    if (!isParamExists(match.captured(1), match.captured(2), errorString)){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        if (errorString.isEmpty()) errorMessage.append("\t\t\tРР параметра для записи результата не создан");
+                        else errorMessage.append(errorString);
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    bool isArray = isParamArray(match.captured(1), match.captured(2), errorString);
+                    if ((!match.captured(3).isEmpty() && !isArray) || (match.captured(3).isEmpty() && isArray)){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        if (errorString.isEmpty()) {
+                            if (!isArray) errorMessage.append("\t\t\tРР параметр для записи результата не является массивом");
+                            else errorMessage.append("\t\t\tРР параметр для записи результата является массивом. Требуется указать индекс!");
+                        }
+                        else errorMessage.append(errorString);
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+
+                    QString queryString;
+                    if (match.captured(3).isEmpty()) queryString = QString("UPDATE RR_PAR SET Val = %1 WHERE Bl_Name = '%2' AND Par_Name = '%3'").arg(result).arg(match.captured(1)).arg(match.captured(2));
+                    else queryString = QString("UPDATE RR_PAR SET Val = %1 WHERE Bl_Name = '%2' AND Par_Name = '%3' AND Index = %4").arg(result).arg(match.captured(1)).arg(match.captured(2)).arg(match.captured(3));
+                    QSqlQuery query = MainWindow::getQueryRRDB(queryString);
+                    if (!query.isActive()){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        if (dir.numDirect > -1){
+                            errorMessage.append("\t#" + numDirect + "\t\t");
+                        } else errorMessage.append("\t\t\t");
+                        errorMessage.append("ОШИБКА ОБРАЩЕНИЯ К БД: " + query.lastError().text());
+                        {
+                            printInProt(errorMessage, "13", textStyle());
+                        }
+                        qDebug() << "QUERY ERROR";
+                        return false;
+                    }
+                    if (query.numRowsAffected() <= 0){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        if (dir.numDirect > -1){
+                            errorMessage.append("\t#" + numDirect + "\t\t");
+                        } else errorMessage.append("\t\t\t");
+                        errorMessage.append("ОШИБКА ЗАПИСИ РЕЗУЛЬТАТА В БД");
+                        {
+                            printInProt(errorMessage, "13", textStyle());
+                        }
+                        qDebug() << "ERROR WRITE RESULT";
+                        return false;
+                    }
+                    query.clear();*/
+
+                }
+
+                QString table;
+                QString tableSplit("|----------------|----------------|-----------|-----------|-----------|-------------------------|");
+                table.append(tableSplit + "\n");
+                table.append      ("|      ИД1(-)    |      ИД2(+)    |  знач.(В) |  н.доп.   |   в.доп.  |           ПАР           |\n");
+                table.append(tableSplit);
+                printInProt(table, "0", textStyle());
+                table = QString();
+
+                QStringList infoSections;
+                infoSections << par1 << par2 /*<< QString::number(result, 'f', 6)*/;
+                infoSections << QString::number(result, 'f', 4);
+                if (nDop != -1) infoSections << QString::number(nDop);
+                else infoSections << QString();
+                if (vDop != -1) infoSections << QString::number(vDop);
+                else infoSections << QString();
+                infoSections << rrParName;
+                QString tableRow = "|";
+                for (int i = 0; i < 6; i++){
+                    QString infoSection = infoSections[i];
+                    if (infoSection.length() > tableSplit.split("|")[i + 1].length()){
+                        infoSection = infoSection.left(table.split("\n")[0].split("|")[i + 1].length());
+                    }
+                    int needSpace = tableSplit.split("|")[i + 1].length() - infoSection.length();
+                    int needSpaceLeft = needSpace / 2 + needSpace % 2;
+                    int needSpaceRight = needSpace / 2;
+                    infoSection.prepend(QString(needSpaceLeft, QChar(' ')));
+                    infoSection.append(QString(needSpaceRight, QChar(' ')));
+                    tableRow.append(infoSection + "|");
+                }
+                table.append(tableRow);
+                if (constValues::isImitMode.load() != 1 && ((nDop != 1 && result < nDop) || (vDop != -1 && result > vDop))){
+                    printInProt(table, "13", textStyle());
+                    this->GL_NORM_STATUS = false;
+                } else{
+                    printInProt(table, "0", textStyle());
+                }
+                table = QString();
+                table.append(tableSplit);
+                table.chop(1);
+
+                printInProt(table, "0", textStyle());
+                if (!this->GL_NORM_STATUS){
+                    printInProt(QString("\t\t%1: НЕНОРМА ОПЕРАЦИИ").arg(dir.directive), "13", textStyle());
+                } else{
+                    printInProt(QString("\t\t%1: НОРМА ОПЕРАЦИИ").arg(dir.directive), "0", textStyle());
+                }
+
+                c[0] = char(0x02);
+                c[1] = char(0);
+                c[2] = char(numCont2);
+                sendMessageToNU(c, 3, &status);
+                if (ost_flag.load() == 1){
+                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    QByteArray cBAReset;
+                    cBAReset.clear();
+                    cBAReset.append(char(0x0a));
+                    bool statusReset{false};
+                    sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                    //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                    goto end_metka;
+                }
+
+                if (!status) return false;
+                if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                    //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
+                    printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
+                    printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+                }
+                else if (respondNU.length() != 2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                else if (respondNU.at(1) == -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+
+                c[0] = char(0x01);
+                c[1] = char(0);
+                c[2] = char(numCont1);
+                sendMessageToNU(c, 3, &status);
+                if (ost_flag.load() == 1){
+                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    QByteArray cBAReset;
+                    cBAReset.clear();
+                    cBAReset.append(char(0x0a));
+                    bool statusReset{false};
+                    sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
+                    //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
+                    goto end_metka;
+                }
+                if (!status) return false;
+                if (respondNU.length() == 2 && respondNU.at(1) == 0){
+                    //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
+                    printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
+                    printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+                }
+                else if (respondNU.length() != 2){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                else if (respondNU.at(1) == -1){
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+
+
+
+
+                break;
+            }
     }
     end_metka:
     if (stepMode.load() == 1) {
