@@ -22,7 +22,10 @@ bool ProtManager::createProtocol(){
     if (!QDir(tempDirNU).exists()){
         bool status = QDir().mkpath(tempDirNU);
         if (!status){
-            QMessageBox::critical(nullptr, "Ошибка!", "Не удалось создать файл протокола НУ");
+            //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось создать файл протокола НУ");
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось создать файл протокола НУ", QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
             return false;
         }
     }
@@ -30,19 +33,28 @@ bool ProtManager::createProtocol(){
     nuFile.setFileName(tempDirNU);
     if (!nuFile.exists()){
         if (!nuFile.open(QIODevice::WriteOnly)){
-            QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола НУ!\n" + nuFile.errorString());
+            //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола НУ!\n" + nuFile.errorString());
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось открыть файл протокола НУ!\n" + nuFile.errorString(), QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
             return false;
         }
     } else if (!nuFile.isOpen()){
         if (!nuFile.open(QIODevice::Append)){
-            QMessageBox::critical(nullptr, "Ошибка", "Не удалось открыть файл протокола НУ\n" + nuFile.errorString());
+            //QMessageBox::critical(nullptr, "Ошибка", "Не удалось открыть файл протокола НУ\n" + nuFile.errorString());
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось открыть файл протокола НУ\n" + nuFile.errorString(), QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
             return false;
         }
     }
     if (!writeFile.exists()){
         QString tempDir = /*QStandardPaths::writableLocation(QStandardPaths::TempLocation);*/ MainWindow::getOnParam("ПРОТОКОЛ");
         if (tempDir.isEmpty()){
-            QMessageBox::warning(nullptr, "Ошибка!", "не удалось записать файл протокола по адресу в файле .on");
+            //QMessageBox::warning(nullptr, "Ошибка!", "Не удалось записать файл протокола по адресу в файле .on");
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось записать файл протокола по адресу в файле .on", QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
             tempDir = QCoreApplication::applicationDirPath().append("/TempFiles");
         }
         //tempDir.append("/PRIS");
@@ -54,12 +66,18 @@ bool ProtManager::createProtocol(){
         writeFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
         readFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
         if (!writeFile.open(QIODevice::WriteOnly | QIODevice::Truncate) || !readFile.open(QIODevice::ReadOnly)){
-            QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола\n" + writeFile.errorString() + "\n" + readFile.errorString());
+            //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола\n" + writeFile.errorString() + "\n" + readFile.errorString());
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось открыть файл протокола\n" + writeFile.errorString() + "\n" + readFile.errorString(), QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
             return false;
         }
 
         if (!codec){
-            QMessageBox::critical(nullptr, "Ошибка!", "Не удалось подключить перекодировщик (cp1251 to UTF8)");
+            //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось подключить перекодировщик (cp1251 to UTF8)");
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось подключить перекодировщик (cp1251 to UTF8)", QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
             return false;
         }
 
@@ -84,7 +102,10 @@ bool ProtManager::createProtocol(){
             writeFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
             readFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
             if (!writeFile.open(QIODevice::Append) || !readFile.open(QIODevice::ReadOnly)){
-                QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола");
+                //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола");
+                QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось открыть файл протокола", QMessageBox::Ok);
+                msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+                msgBox->exec();
                 return false;
             }
         }
@@ -151,6 +172,7 @@ bool ProtManager::saveFile(const QString& savePath, const QString& saveNUPath){
 }
 static const int size_prewiev_title_prot = 10 + 4;
 QString ProtManager::getAllFileDate(){
+    qDebug() << "getAllFileDate";
     if (!this->readFile.isOpen()){
         return QString();
     }

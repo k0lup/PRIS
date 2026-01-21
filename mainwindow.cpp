@@ -39,20 +39,26 @@ QString MainWindow::getCurCatalog(){
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    this->setWindowTitle("АППЦП: вер.01.00 ПРОТОКОЛ: C:\\APPCP\\prot.pcp");
+    dirRunnerThread = nullptr;
     //blockDirectRun.store(0);
     QDir dir(QDir::homePath());
     if (!dir.exists()) dir.mkpath(".");
     QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл конфигурации", "", "*.cfg");
     if (filePath.isEmpty() || QFileInfo(filePath).suffix().toUpper() != "CFG"){
         QString errorMessage(QString("CFG_NOT_OPEN"));
-        QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
         statusOpenned = false;
         //QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         return;
     }
     if (!readConfigFile(filePath, paramValues)){
         QString errorMessage(QString("CFG_NOT_OPEN"));
-        QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
         //QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         statusOpenned = false;
         return;
@@ -61,14 +67,19 @@ MainWindow::MainWindow(QWidget *parent)
     QString fileOnPath = QFileDialog::getOpenFileName(this, "Выберите файл настройки", "", "*.on");
     if (fileOnPath.isEmpty() || QFileInfo(fileOnPath).suffix().toUpper() != "ON"){
         QString errorMessage(QString("ON_NOT_OPEN"));
-        QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
         statusOpenned = false;
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         return;
     }
     if (!readConfigFile(fileOnPath, paramOnValues)){
         QString errorMessage(QString("ON_NOT_OPEN"));
-        QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        //QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         statusOpenned = false;
         return;
@@ -100,7 +111,10 @@ MainWindow::MainWindow(QWidget *parent)
             val = str.toInt(&ok);
         }
         if (!ok){
-            QMessageBox::critical(nullptr, "Ошибка", "Не удалось получить номер порта ПРИЕМ_ПЕРЕДАЧА");
+            //QMessageBox::critical(nullptr, "Ошибка", "Не удалось получить номер порта ПРИЕМ_ПЕРЕДАЧА");
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось получить номер порта ПРИЕМ_ПЕРЕДАЧА", QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
         } else{
             qDebug() << "WAR: " << val;
             portAppcpWriteAndRead = val;
@@ -118,7 +132,10 @@ MainWindow::MainWindow(QWidget *parent)
             val = str.toInt(&ok);
         }
         if (!ok){
-            QMessageBox::critical(nullptr, "Ошибка", "Не удалось получить номер порта ТОЛЬКО_ПРИЕМ");
+            //QMessageBox::critical(nullptr, "Ошибка", "Не удалось получить номер порта ТОЛЬКО_ПРИЕМ");
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось получить номер порта ТОЛЬКО_ПРИЕМ", QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
         } else{
             qDebug() << "OR: " << val;
             portAppcpOnlyRead = val;
@@ -175,19 +192,29 @@ MainWindow::MainWindow(QWidget *parent)
 
     QAction *cancelAction = correctionMenu->addAction("Отмена");
     cancelAction->setShortcut(QKeySequence("ALT+BkSp"));
+    this->addAction(cancelAction);
+    cancelAction->setShortcutContext(Qt::ApplicationShortcut);
     cancelAction->setEnabled(false);
     QAction *eraseAction = correctionMenu->addAction("Вырезать");
     eraseAction->setShortcut(QKeySequence("CTRL+X"));
+    this->addAction(eraseAction);
+    eraseAction->setShortcutContext(Qt::ApplicationShortcut);
     eraseAction->setEnabled(false);
     QAction *copyAction = correctionMenu->addAction("Копировать");
     copyAction->setShortcut(QKeySequence("CTRL+C"));
+    copyAction->setShortcutContext(Qt::ApplicationShortcut);
+    this->addAction(copyAction);
     copyAction->setEnabled(false);
     QAction *pasteAction = correctionMenu->addAction("Вставить");
     pasteAction->setShortcut(QKeySequence("CTRL+V"));
+    pasteAction->setShortcutContext(Qt::ApplicationShortcut);
+    this->addAction(pasteAction);
     pasteAction->setEnabled(false);
     QAction *clearAction = correctionMenu->addAction("Очистить");
-    clearAction->setShortcut(QKeySequence("CTRL+DEL"));
-    clearAction->setEnabled(false);
+    clearAction->setShortcuts({QKeySequence("CTRL+DEL"), QKeySequence(Qt::Key_Escape)});
+    //clearAction->setShortcutContext(Qt::ApplicationShortcut);
+    //this->addAction(clearAction);
+    //clearAction->setEnabled(false);
     QAction *selectAllAction = correctionMenu->addAction("Выделить все");
     selectAllAction->setEnabled(false);
 
@@ -244,18 +271,29 @@ MainWindow::MainWindow(QWidget *parent)
     QMenu *programActionMenu = new QMenu("Оп. с прог.");
         QAction *callAction = programActionMenu->addAction("Вызвать");
         callAction->setShortcut(QKeySequence("CTRL+1"));
+        this->addAction(callAction);
+        callAction->setShortcutContext(Qt::ApplicationShortcut);
         //QAction *startAction = programActionMenu->addAction("ПУСК");
         //startAction->setShortcut(QKeySequence("CTRL+2"));
         QAction *start = programActionMenu->addAction("ПУСК");
         start->setShortcut(QKeySequence("CTRL+2"));
+        start->setShortcutContext(Qt::ApplicationShortcut);
+        this->addAction(start);
         QAction *toDirectAction = programActionMenu->addAction("НА");
         toDirectAction->setShortcut(QKeySequence("CTRL+3"));
+        this->addAction(toDirectAction);
+        toDirectAction->setShortcutContext(Qt::ApplicationShortcut);
         QAction *exitProgramAction = programActionMenu->addAction("Выход");
         exitProgramAction->setShortcut(QKeySequence("CTRL+4"));
+        this->addAction(exitProgramAction);
+        exitAction->setShortcutContext(Qt::ApplicationShortcut);
         QAction *rExitProgramAction = programActionMenu->addAction("РВЫХОД");
         rExitProgramAction->setShortcut(QKeySequence("CTRL+5"));
+        this->addAction(rExitProgramAction);
         QAction *repeatAction = programActionMenu->addAction("Повтор");
         repeatAction->setShortcut(QKeySequence("CTRL+6"));
+        this->addAction(repeatAction);
+        repeatAction->setShortcutContext(Qt::ApplicationShortcut);
     QToolButton *programMenuButton = new QToolButton(this);
     programMenuButton->setText("Оп. с прог.");
     programMenuButton->setMenu(programActionMenu);
@@ -491,6 +529,7 @@ MainWindow::MainWindow(QWidget *parent)
         static QWidget *commandWidget;
         if (!commandWidget){
             commandWidget = new QWidget();
+            commandWidget->setWindowTitle("Окно поля ввода директив");
             QTextEdit *txtEdit = new QTextEdit(commandWidget);
             QPushButton *okBtn = new QPushButton("Ок" ,commandWidget);
             QPushButton *cancelBtn = new QPushButton("Отмена", commandWidget);
@@ -547,7 +586,9 @@ MainWindow::MainWindow(QWidget *parent)
     QString dbFilePath = paramOnValues.value("РР_ПАРАМЕТРЫ");
     if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
         QString errorMessage(QString("RR_DB_NOT_OPEN"));
-        QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
     }
 
@@ -566,7 +607,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     if (!rrParDB.open()){
         QString errorMessage(QString("RR_DB_NOT_OPEN"));
-        QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         qDebug() << "DB_NOT_OPEN";
     }
@@ -577,7 +620,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
         QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
-        QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
     }
 
@@ -587,7 +632,9 @@ MainWindow::MainWindow(QWidget *parent)
     appcpParDB.setDatabaseName(dbFilePath);
     if (!appcpParDB.open()){
         QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
-        QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         qDebug() << "DB_NOT_OPEN";
     }
@@ -598,7 +645,9 @@ MainWindow::MainWindow(QWidget *parent)
         QSqlQuery query(appcpParDB);
         if (!query.exec("SELECT ID, Nom, Kont FROM APPCP_ZO")){
             QString errorMessage(QString("Ошибка получения параметров АППЦП из БД\n") + query.lastError().text());
-            QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
             QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         }
         while (query.next()){
@@ -608,7 +657,10 @@ MainWindow::MainWindow(QWidget *parent)
             int cont = query.value(2).toInt(&ok);
             if (!ok){
                 QString errorMessage(QString("Ошибка получения параметров АППЦП из БД\n") + query.lastError().text());
-                QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+                //QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+                QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+                msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+                msgBox->exec();
                 QTimer::singleShot(0, qApp, &QCoreApplication::quit);
                 return;
             }
@@ -717,10 +769,10 @@ MainWindow::MainWindow(QWidget *parent)
             )");
             tableView->resizeColumnsToContents();
 
-            QPushButton *toTop = new QPushButton("T", directInfoWgt);
-            QPushButton *toUp = new QPushButton("U", directInfoWgt);
-            QPushButton *toDown = new QPushButton("D", directInfoWgt);
-            QPushButton *toBottom = new QPushButton("B", directInfoWgt);
+            QPushButton *toTop = new QPushButton(QIcon(":/img/img/arrowUPToEnd.png"), "", directInfoWgt);
+            QPushButton *toUp = new QPushButton(QIcon(":/img/img/arrowUP.png"), "", directInfoWgt);
+            QPushButton *toDown = new QPushButton(QIcon(":/img/img/arrowDown.png"), "", directInfoWgt);
+            QPushButton *toBottom = new QPushButton(QIcon(":/img/img/arrowDownToEnd.png"), "", directInfoWgt);
             QLineEdit *findLineEdit = new QLineEdit(directInfoWgt);
             QPushButton *copy = new QPushButton("копировать", directInfoWgt);
 
@@ -1040,6 +1092,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         if (!rrParWgt){
             rrParWgt = new QWidget();
+            rrParWgt->setWindowTitle("РР параметры");
             QPushButton *topBtn = new QPushButton(rrParWgt);
             QPushButton *upBtn = new QPushButton(rrParWgt);
             QPushButton *downBtn = new QPushButton(rrParWgt);
@@ -1307,8 +1360,9 @@ MainWindow::MainWindow(QWidget *parent)
         static QWidget *curFullProtWgt = new QWidget(this);
         static QTextEdit *curFullProtText = new QTextEdit(curFullProtWgt);
         static QLineEdit *findLineEdit = new QLineEdit(curFullProtWgt);
-        static QPushButton *up = new QPushButton("up", curFullProtWgt);
-        static QPushButton *down = new QPushButton("down", curFullProtWgt);
+        static QPushButton *up = new QPushButton(QIcon(":/img/img/arrowUP.png"), "", curFullProtWgt);
+        static QPushButton *down = new QPushButton(QIcon(":/img/img/arrowDown.png"), "", curFullProtWgt);
+        //static QPushButton *printBtn = new QPushButton(QIcon(":/img/img/print.png"), "", curFullProtWgt);
         static QCheckBox *needUpdate = new QCheckBox("Обновлять протокол", curFullProtWgt);
         static QVBoxLayout *vBox = new QVBoxLayout();
         static QHBoxLayout *hBox = new QHBoxLayout();
@@ -1319,6 +1373,8 @@ MainWindow::MainWindow(QWidget *parent)
             hBox->addWidget(findLineEdit);
             hBox->addWidget(up);
             hBox->addWidget(down);
+            //hBox->addStretch();
+            //hBox->addWidget(printBtn);
             hBox->addWidget(needUpdate);
             vBox->addLayout(hBox);
             vBox->addWidget(curFullProtText);
@@ -1387,13 +1443,14 @@ MainWindow::MainWindow(QWidget *parent)
         static QWidget *listSaveCommandWgt;
         static QStringList deleteCommand;
 
-        if (listSaveCommandWgt){
-            delete listSaveCommandWgt;
+        /*if (listSaveCommandWgt){
+            listSaveCommandWgt->deleteLater();
             listSaveCommandWgt = nullptr;
             deleteCommand.clear();
-        }
+        }*/
         if (!listSaveCommandWgt){
             listSaveCommandWgt = new QWidget();
+            listSaveCommandWgt->setWindowTitle("Список сохраненных комманд");
             QListWidget *listWgt = new QListWidget(listSaveCommandWgt);
 
             for (const QString& command : commandLine->getHistory()){
@@ -1404,6 +1461,8 @@ MainWindow::MainWindow(QWidget *parent)
             }
 
             QObject::connect(commandLine, &CommandLine::historyUpdated, [listWgt, commandLine](){
+                QSignalBlocker blocker(listWgt->model());
+                listWgt->setUpdatesEnabled(false);
                 listWgt->clear();
                 for (const QString& command : commandLine->getHistory()){
                     QListWidgetItem *item = new QListWidgetItem(command);
@@ -1411,6 +1470,7 @@ MainWindow::MainWindow(QWidget *parent)
                     item->setCheckState(Qt::Unchecked);
                     listWgt->insertItem(0, item);
                 }
+                listWgt->setUpdatesEnabled(true);
             });
 
             QPushButton *selectAllBtn = new QPushButton("Пометить все", listSaveCommandWgt);
@@ -1560,6 +1620,7 @@ MainWindow::MainWindow(QWidget *parent)
     dirRunner->moveToThread(dirRunnerThread);
     QObject::connect(dirRunnerThread, &QThread::started, dirRunner, &directRunner::startWork);
     QObject::connect(dirRunnerThread, &QThread::finished, dirRunner, &QObject::deleteLater);
+    QObject::connect(this, &MainWindow::sendExitEventToNU, dirRunner, &directRunner::exitEvent, Qt::BlockingQueuedConnection);
     dirRunnerThread->start();
 
     QObject::connect(manual, &ManualMode::podkl, dirRunner, &directRunner::runCommandNU);
@@ -1602,7 +1663,10 @@ MainWindow::MainWindow(QWidget *parent)
             QProcess *pfProcess = new QProcess(this);
             pfProcess->start(QFileInfo(pfPath).filePath(), {fileName});
         } else{
-            QMessageBox::critical(nullptr, "Ошибка!", "Путь к PF не определен в файле конфигурации");
+            //QMessageBox::critical(nullptr, "Ошибка!", "Путь к PF не определен в файле конфигурации");
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Путь к PF не определен в файле конфигурации", QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
         }
     });
 
@@ -1615,7 +1679,10 @@ MainWindow::MainWindow(QWidget *parent)
             QProcess *protViewProcess = new QProcess(this);
             protViewProcess->start(QFileInfo(protViewPath).filePath(), {fileName});
         } else{
-            QMessageBox::critical(nullptr, "Ошибка!", "Путь к ProtView не определен в файле конфигурации");
+            //QMessageBox::critical(nullptr, "Ошибка!", "Путь к ProtView не определен в файле конфигурации");
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Путь к ProtView не определен в файле конфигурации", QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
         }
     });
 
@@ -1645,12 +1712,18 @@ MainWindow::MainWindow(QWidget *parent)
     }, Qt::QueuedConnection);
 
     if (!paramValues.contains("СПРАВКА") || QFileInfo(paramValues.value("СПРАВКА")).suffix().toUpper() != "QHC" || !QFile(paramValues.value("СПРАВКА")).exists()){
-        QMessageBox::critical(nullptr, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении");
+        //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении");
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении", QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
     } else{
         qDebug() << paramValues.value("СПРАВКА");
         QHelpEngine *helpEngine = new QHelpEngine(paramValues.value("СПРАВКА"), this);
         if (!helpEngine->setupData()) {
-            QMessageBox::critical(nullptr, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении");
+            //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении");
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось загрузить файл справки!\nСправка не будет доступна в приложении", QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
         } else{
             QObject::connect(referense, &QAction::triggered, this, [this, helpEngine](){
                 static QSplitter *splitter;
@@ -1759,8 +1832,10 @@ bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>&
 MainWindow::~MainWindow()
 {
     if (stepWgt != nullptr && this->statusOpenned) delete this->stepWgt;
-    //if (dirRunner) delete dirRunner;
-    dirRunnerThread->quit();
+    emit sendExitEventToNU();
+    if (dirRunnerThread != nullptr && dirRunnerThread->isRunning()){
+        dirRunnerThread->quit();
+    }
 }
 
 QSqlQuery MainWindow::getQueryRRDB(const QString &queryString){
@@ -1861,10 +1936,12 @@ void MainWindow::set100VStyleForProtocol(){
 }
 
 void MainWindow::unset100VStyleForProtocol(){
+    qDebug() << "unset100begin";
     this->protocolText->setStyleSheet("");
     this->protocolWgt->setStyleSheet("");
 
     emit this->protocolSetStyleState();
+    qDebug() << "unset100end";
 }
 
 void MainWindow::showDirectWindow(const QString& textDirect){
@@ -1994,7 +2071,7 @@ void MainWindow::addProgramToModel(const QString& prName, const QStringList& prT
 
 void MainWindow::setNumDirInModel(const int numDir, const int numLine){
     if (programInfomodel->rowCount() >= 1) programInfomodel->setData(programInfomodel->index(programInfomodel->rowCount() - 1, 2), QString::number(numDir));
-    this->stepWgt->setNumLine(numLine);
+    this->stepWgt->setNumLine(numLine - 1);
 
     emit this->programModelActionAccept();
 }
@@ -2029,6 +2106,7 @@ void MainWindow::closeEvent(QCloseEvent *event){
         event->ignore();
     } else{
         QMessageBox msgBox;
+        msgBox.setWindowFlags(msgBox.windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox.setWindowTitle("АППЦП");
         msgBox.setText("ЗАВЕРШИТЬ СЕАНС?");
         msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);

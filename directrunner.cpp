@@ -34,6 +34,14 @@ const QMap<int, strNUErrorVal> NUErrorCodeValue = {{0, strNUErrorVal("ошибо
                                                    {20, strNUErrorVal("таймаут при работе с интерфейсом 12С. Номер регистра: ", true)}, {21, strNUErrorVal("таймаут при приёме команды от НУ")}, {22, strNUErrorVal("выбранная команда отсутствует")}, {23, strNUErrorVal("пропущены байты при приёме команды")},
                                                    {24, strNUErrorVal("автоконтроль был завершён неуспешно (предупреждение)")}, {255, strNUErrorVal("незарегистрированная ошибка")}};
 
+const QMap<char, QString> voltErrorCode = {{1, QString("Ошибка при подсчете контрольной суммы")},
+                                           {2, QString("Ошибка входных параметров")},
+                                           {4, QString("Зашкал по диапазону вниз")},
+                                           {5, QString("Зашкал по диапазону вверх")},
+                                           {20, QString("Таймаут или нет связи с вольтметром")},
+                                           {22, QString("Выбранная команда отсутствует")},
+                                           {255, QString("Незарегистрированная ошибка (резерв)")}};
+
 qint32 CirSum(qint32 x,qint32 y)
 {
     int nXHigh = (x & 0xffff0000) >> 16;
@@ -132,12 +140,103 @@ void directRunner::printStartMessage(){
     printInProt(QString("Каталог загрузки:   ") + QCoreApplication::applicationDirPath(), "0", textStyle());
     printInProt(QString("Текущий каталог:    " + MainWindow::getCurCatalog()), "0", textStyle());
     printInProt(QString("Версия ПРИС:        ") + MainWindow::getCfgParam("НОМЕР_ВЕРСИИ"), "0", textStyle());
+    printInProt(QString("КА:                 ") + MainWindow::getCfgParam("КОСМИЧЕСКИЙ_АППАРАТ"), "0", textStyle());
     printInProt(QString("-------------------------------------"), "0", textStyle());
 }
 void directRunner::startWork(){
 
     printStartMessage();
 
+    if (MainWindow::getCfgParam("JSON_MESSAGE").toUpper() == "TRUE"){
+        can2RR = true;
+        jsonReceiver = new JsonReceiver(socketCanal2, this);
+        QObject::connect(jsonReceiver, &JsonReceiver::messageGet, [this](portBMessage messageStruct){
+            if (messageStruct.type == 0) printInProt(QString("%1 : (%2) %3:%4:%5.(%6)  ( %7)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(messageStruct.type).arg(messageStruct.hour, 2, 10, QChar('0')).arg(messageStruct.min, 2, 10, QChar('0')).arg(messageStruct.sec, 2, 10, QChar('0')).arg(int(messageStruct.ms)/*, 3, 10, QChar('0')*/).arg(messageStruct.text), "22", textStyle());
+            else{
+                int code = messageStruct.code;
+                int nextByte = -1;
+                if (!NUErrorCodeValue.contains(code)) code = 255;
+                QString errorMessage = NUErrorCodeValue.value(code).errorMessage;
+                if (NUErrorCodeValue.value(code).needByte) errorMessage.append(QString(" %1").arg(int(nextByte)));
+                printInProt(QString("%1 : (%2) %3:%4:%5.(%6) %7 ( %8)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(messageStruct.code).arg(messageStruct.hour, 2, 10, QChar('0')).arg(messageStruct.min, 2, 10, QChar('0')).arg(messageStruct.sec, 2, 10, QChar('0')).arg(messageStruct.ms/*, 3, 10, QChar('0')*/).arg(errorMessage).arg(messageStruct.text), "22", textStyle());
+            }
+            emit socketRRMes();
+        });
+
+        QObject::connect(jsonReceiver, &JsonReceiver::errorGet, [this](QString message){
+            printInProt(QString("\t\t\tОшибка получения данных по порту %1: ").arg(portAppcpOnlyRead, 8, 16, QChar('0')) + message, "13", textStyle());
+        });
+
+        QObject::connect(jsonReceiver, &JsonReceiver::bytesGet, [this](QByteArray bytes){
+            QByteArray response = bytes;
+            printInProt(QString("%1 NETCL: получено %2 байтов").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(response.length()), "13", textStyle(), true);
+            printInProt(QString("\t\t\tПолучено сообщ. port = %2 len = %1").arg(response.length()).arg(portAppcpOnlyRead, 8, 16, QChar('0')), "23", textStyle(), true);
+            printInProt(QString("\t\t\tПолучено СООБЩ (print_soob)"), "23", textStyle(), true);
+            QStringList byteList;
+            int count = 0;
+            for (unsigned char byte: response){
+                QString curByte;
+                if (count == 0) curByte.append("\t\t\t");
+                count += 1;
+                curByte.append(QString("0x") + QString("%1").arg(byte, 2, 16, QChar('0')).toUpper());
+                if (count >= 16){
+                    curByte += "\n";
+                    count = 0;
+                }
+                byteList << curByte;
+            }
+            byteList.first().prepend(" ");
+            if (byteList.last().at(byteList.last().length()-1) == '\n') byteList.last().chop(1);
+            printInProt(byteList.join(" "), "23", textStyle(), true);
+        });
+    } else {
+        QObject::connect(socketCanal2, &QTcpSocket::readyRead, [this](){
+            can2RR = true;
+           QByteArray response = socketCanal2->readAll();
+           printInProt(QString("%1 NETCL: получено %2 байтов").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(response.length()), "13", textStyle(), true);
+           printInProt(QString("\t\t\tПолучено сообщ. port = %2 len = %1").arg(response.length()).arg(portAppcpOnlyRead, 8, 16, QChar('0')), "23", textStyle(), true);
+           printInProt(QString("\t\t\tПолучено СООБЩ (print_soob)"), "23", textStyle(), true);
+           QStringList byteList;
+           int count = 0;
+           for (unsigned char byte: response){
+               QString curByte;
+               if (count == 0) curByte.append("\t\t\t");
+               count += 1;
+               curByte.append(QString("0x") + QString("%1").arg(byte, 2, 16, QChar('0')).toUpper());
+               if (count >= 16){
+                   curByte += "\n";
+                   count = 0;
+               }
+               byteList << curByte;
+           }
+           byteList.first().prepend(" ");
+           if (byteList.last().at(byteList.last().length()-1) == '\n') byteList.last().chop(1);
+           printInProt(byteList.join(" "), "23", textStyle(), true);
+
+           if (response.length() != 93){
+               printInProt(QString("Ошибка в размере сообщения по порту %1! Ожидалось 93 байта, получено: %2 байт!").arg(portAppcpOnlyRead, 8, 16, QChar('0')).arg(response.length()), "13", textStyle());
+               emit this->socketRRMes();
+               return;
+           }
+
+           QByteArray slice = response.mid(13);
+           QByteArray messageBA;
+           for (unsigned char byte: slice){
+               if (byte == 0) continue;
+               messageBA.append(byte);
+           }
+           if (response[11] == char(0)) printInProt(QString("%1 : (%2) %3:%4:%5.(%6)  ( %7)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(int(response[0])).arg(response[8], 2, 10, QChar('0')).arg(response[7], 2, 10, QChar('0')).arg(response[10], 2, 10, QChar('0')).arg(int(response[9])/*, 3, 10, QChar('0')*/).arg(codec->toUnicode(messageBA)), "22", textStyle());
+           else{
+               int code = response[11];
+               int nextByte = response[12];
+               if (!NUErrorCodeValue.contains(code)) code = 255;
+               QString errorMessage = NUErrorCodeValue.value(code).errorMessage;
+               if (NUErrorCodeValue.value(code).needByte) errorMessage.append(QString(" %1").arg(int(nextByte)));
+               printInProt(QString("%1 : (%2) %3:%4:%5.(%6) %7 ( %8)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(int(response[0])).arg(response[8], 2, 10, QChar('0')).arg(response[7], 2, 10, QChar('0')).arg(response[10], 2, 10, QChar('0')).arg(int(response[9])/*, 3, 10, QChar('0')*/).arg(errorMessage).arg(codec->toUnicode(messageBA)), "22", textStyle());
+           }
+           emit this->socketRRMes();
+        });
+    }
     QObject::connect(socketCanal1, &QTcpSocket::connected, [this](){
         if (socketCanal2->state() == QAbstractSocket::ConnectedState) this->hasConnectNU.store(1);
         printInProt(QString("Связь установлена с НУ по каналу 1"), "23", textStyle());
@@ -184,53 +283,6 @@ void directRunner::startWork(){
             printInProt("Получен ответ без запроса", "13", textStyle());
         }
         emit this->socketRRMes();
-    });
-
-    QObject::connect(socketCanal2, &QTcpSocket::readyRead, [this](){
-        can2RR = true;
-       QByteArray response = socketCanal2->readAll();
-       printInProt(QString("%1 NETCL: получено %2 байтов").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(response.length()), "13", textStyle(), true);
-       printInProt(QString("\t\t\tПолучено сообщ. port = %2 len = %1").arg(response.length()).arg(portAppcpOnlyRead, 8, 16, QChar('0')), "23", textStyle(), true);
-       printInProt(QString("\t\t\tПолучено СООБЩ (print_soob)"), "23", textStyle(), true);
-       QStringList byteList;
-       int count = 0;
-       for (unsigned char byte: response){
-           QString curByte;
-           if (count == 0) curByte.append("\t\t\t");
-           count += 1;
-           curByte.append(QString("0x") + QString("%1").arg(byte, 2, 16, QChar('0')).toUpper());
-           if (count >= 16){
-               curByte += "\n";
-               count = 0;
-           }
-           byteList << curByte;
-       }
-       byteList.first().prepend(" ");
-       if (byteList.last().at(byteList.last().length()-1) == '\n') byteList.last().chop(1);
-       printInProt(byteList.join(" "), "23", textStyle(), true);
-
-       if (response.length() != 93){
-           printInProt(QString("Ошибка в размере сообщения по порту %1! Ожидалось 93 байта, получено: %2 байт!").arg(portAppcpOnlyRead, 8, 16, QChar('0')).arg(response.length()), "13", textStyle());
-           emit this->socketRRMes();
-           return;
-       }
-
-       QByteArray slice = response.mid(13);
-       QByteArray messageBA;
-       for (unsigned char byte: slice){
-           if (byte == 0) continue;
-           messageBA.append(byte);
-       }
-       if (response[11] == char(0)) printInProt(QString("%1 : (%2) %3:%4:%5.(%6)  ( %7)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(int(response[11])).arg(response[8], 2, 10, QChar('0')).arg(response[7], 2, 10, QChar('0')).arg(response[10], 2, 10, QChar('0')).arg(int(response[9])/*, 3, 10, QChar('0')*/).arg(codec->toUnicode(messageBA)), "22", textStyle());
-       else{
-           int code = response[11];
-           int nextByte = response[12];
-           if (!NUErrorCodeValue.contains(code)) code = 255;
-           QString errorMessage = NUErrorCodeValue.value(code).errorMessage;
-           if (NUErrorCodeValue.value(code).needByte) errorMessage.append(QString(" %1").arg(int(nextByte)));
-           printInProt(QString("%1 : (%2) %3:%4:%5.(%6) %7 ( %8)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(int(response[11])).arg(response[8], 2, 10, QChar('0')).arg(response[7], 2, 10, QChar('0')).arg(response[10], 2, 10, QChar('0')).arg(int(response[9])/*, 3, 10, QChar('0')*/).arg(errorMessage).arg(codec->toUnicode(messageBA)), "22", textStyle());
-       }
-       emit this->socketRRMes();
     });
 }
 
@@ -505,6 +557,7 @@ QString findFileRecursive(const QString &directoryPath, const QString& fileName)
 void directRunner::sendMessageToNU(const char *data, int len, bool *status){
     respondNU.clear();
     *status = false;
+    if (blockAllIsm) return;
     QByteArray bytes;
     for (int i = 0; i < len; ++i){
         bytes.append(data[i]);
@@ -535,7 +588,7 @@ void directRunner::sendMessageToNU(const char *data, int len, bool *status){
     else if (data[0] == char(0x08)) waitTime += int(data[3]) * 1000;
     else if (data[0] == char(0x20)) waitTime += int(data[2]) * 3000;
     else if (data[0] == char(0x21)){
-        waitTime += int(data[3]) * 1000 * int(data[4]);
+        waitTime += (int(data[3]) + 2) * 1000 * int(data[4]);
     }
     printInProt(QString("\t\t\tOUTNU:\tЗадержка - %1 msec").arg(waitTime), "0", textStyle(), true, false);
     waitNUMessage.store(1);
@@ -933,6 +986,9 @@ void directRunner::runProgram(/*QTextEdit *protocol, QWidget *protocolWgt, QStan
 
 directRunner::directRunner(QObject *parent) : QObject(parent)
 {
+    blockAllIsm = false;
+    voltReady = false;
+    jsonReceiver = nullptr;
     hasConnectNU.store(0);
     stopMessageStr = "";
     metka = "";
@@ -959,14 +1015,20 @@ directRunner::directRunner(QObject *parent) : QObject(parent)
 
     if (!QFile::exists(stylesFilePath)){
         QString errorMessage(QString("Файл стилей не найден!"));
-        QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        //QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
     }
     else{
         QFile stylesFile(stylesFilePath);
         if (!stylesFile.open(QIODevice::ReadOnly | QIODevice::Text)){
             QString errorMessage(QString("Не удалось открыть файл стилей!"));
-            QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+            //QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
             QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         }
         else{
@@ -1000,10 +1062,11 @@ directRunner::directRunner(QObject *parent) : QObject(parent)
 
     socketCanal1 = new QTcpSocket(this);
     socketCanal2 = new QTcpSocket(this);
+    voltSocket = new QTcpSocket(this);
 }
 
 bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
-    if (dir.numDirect == -1 && hasRunProg && !stopProg){
+    if ((dir.numDirect == -1 && hasRunProg && !stopProg)){
         return true;
     }
     stopMessageStr = "";
@@ -1943,7 +2006,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
     case (DirectParser::TypeDirect::DIRECT) : {
         if (dir.testParamDirect.count() > 100){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-            errorMessage.append("НЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
+            errorMessage.append("\t\t\tНЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
             printInProt(errorMessage, "13", textStyle());
             return false;
         }
@@ -2755,12 +2818,12 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             printMessage = "";
             return false;
         }
-        if (programs.last().numDir <= 2){
+        if (programs.last().numDir <= 1){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             if (dir.numDirect > -1){
                 errorMessage.append("\t#" + numDirect + "\t\t");
             } else errorMessage.append("\t\t\t");
-            errorMessage.append(QString("ИСПОЛЬЗОВАНИЕ ДИРЕКТИВЫ ПОВТОР НЕДОПУСТИМО ДО ВСТРЕЧИ 3 ДИРЕКТИВЫ ЦГ"));
+            errorMessage.append(QString("ИСПОЛЬЗОВАНИЕ ДИРЕКТИВЫ ПОВТОР НЕДОПУСТИМО ДО ВСТРЕЧИ 2 ДИРЕКТИВЫ ЦГ"));
             {
                 printInProt(errorMessage, "13", textStyle());
             }
@@ -2918,7 +2981,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
     case (DirectParser::TypeDirect::PROVERKA) :{
         if (dir.testParamDirect.count() > 101){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-            errorMessage.append("НЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
+            errorMessage.append("\t\t\tНЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
             printInProt(errorMessage, "13", textStyle());
             return false;
         }
@@ -3190,6 +3253,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         break;
     }
     case (DirectParser::TypeDirect::PSI) : {
+        qDebug() << "------------------------------------------------------------------";
         if (socketCanal1->state() != QAbstractSocket::ConnectedState || socketCanal2->state() != QAbstractSocket::ConnectedState){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             errorMessage.append("\t\t\tНЕТ СВЯЗИ С НУ");
@@ -3212,26 +3276,32 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
     case (DirectParser::TypeDirect::PRC) : {
         if (dir.testParamDirect.count() > 102){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-            errorMessage.append("НЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
+            errorMessage.append("\t\t\tНЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
             printInProt(errorMessage, "13", textStyle());
             return false;
         }
         if (dir.testParamDirect.length() < 2 || dir.testParamDirect[0].length() != 2 || dir.testParamDirect[0][1].length() > 2){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-            errorMessage.append("\t\t\tНедопустимое количество параметров директивы ПРЦ (строка 1)");
+            errorMessage.append(QString("\t\t\tНедопустимое количество параметров директивы %1 (строка 1)").arg(dir.directive));
+            printInProt(errorMessage, "13", textStyle());
+            return false;
+        }
+        if (dir.testParamDirect[0][1].length() == 2 && dir.testParamDirect[0][1][1] != "СТОП" && dir.testParamDirect[0][1][1] != "СЛЕД"){
+            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            errorMessage.append(QString("\t\t\tНедопустимый параметр РЕАК директивы %1 (строка 1)").arg(dir.directive));
             printInProt(errorMessage, "13", textStyle());
             return false;
         }
         if (dir.testParamDirect[1].length() != 2 || dir.testParamDirect[1][1].length() < 2 || dir.testParamDirect[1][1].length() > 3){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-            errorMessage.append("\t\t\tНедопустимое количество параметров директивы ПРЦ (строка 2)");
+            errorMessage.append(QString("\t\t\tНедопустимое количество параметров директивы %1 (строка 2)").arg(dir.directive));
             printInProt(errorMessage, "13", textStyle());
             return false;
         }
         for (int i = 2; i < dir.testParamDirect.length(); ++i){
             if (dir.testParamDirect[2].length() != 2 || dir.testParamDirect[i][1].length() < 1 || dir.testParamDirect[i][1].length() > 2){
                 errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                errorMessage.append(QString("\t\t\tНедопустимое количество параметров директивы ПРЦ (строка %1)").arg(i + 1));
+                errorMessage.append(QString("\t\t\tНедопустимое количество параметров директивы %1 (строка %2)").arg(dir.directive).arg(i + 1));
                 printInProt(errorMessage, "13", textStyle());
                 return false;
             }
@@ -3807,18 +3877,18 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             }
             if (endRes){
                 this->GL_NORM_STATUS = true;
-                printInProt("ПРЦ: НОРМА ОПЕРАЦИИ", "0", textStyle());
+                printInProt(QString("%1: НОРМА ОПЕРАЦИИ").arg(dir.directive), "0", textStyle());
             } else{
                 if (/*stopReactFlag*/ reactMode == reactType::STOP){
                     stopProg = true;
                     stopMessageStr = QString("ДИРЕКТИВА %1: ЕСТЬ ТОЧКИ НЕ В ДОПУСКЕ").arg(dir.directive);
                 }
                 if (reactMode != reactType::SLED) this->GL_NORM_STATUS = false;
-                printInProt("ПРЦ: НЕНОРМА ОПЕРАЦИИ", "13", textStyle());
+                printInProt(QString("%1: НЕНОРМА ОПЕРАЦИИ").arg(dir.directive), "13", textStyle());
             }
         } else{
             this->GL_NORM_STATUS = true;
-            printInProt("ПРЦ: НОРМА ОПЕРАЦИИ", "0", textStyle());
+            printInProt(QString("%1: НОРМА ОПЕРАЦИИ").arg(dir.directive), "0", textStyle());
         }
         //table.chop(1);
 
@@ -3863,7 +3933,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
     case (DirectParser::TypeDirect::PSC) : {
         if (dir.testParamDirect.count() > 101){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-            errorMessage.append("НЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
+            errorMessage.append("\t\t\tНЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
             printInProt(errorMessage, "13", textStyle());
             return false;
         }
@@ -4262,7 +4332,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 tempTableSplit = tempTableSplit.replace("-", " ");
                 QStringList tableSplitList = tempTableSplit.split("|");
                 int lenCol = tableSplitList[2 + 1].length();
-                tableSplitList[2 + 1] = QString("(") + QString::number(infoSections[2].toDouble() * 1000, 'g', 2) + " Ом)";
+                tableSplitList[2 + 1] = QString("(") + QString::number(infoSections[2].toDouble() * 1000, 'f', 2) + " Ом)";
                 int needSpace = lenCol - tableSplitList[2 + 1].length();
                 int needSpaceLeft = needSpace / 2 + needSpace % 2;
                 int needSpaceRight = needSpace / 2;
@@ -4453,9 +4523,24 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //qDebug() << "VDOP: " << vDop;
 
 
-
+            int diap;
+            /*if (nDop == -1 || (int(nDop * 100000) <= 0.05 * 100000 && int(vDop*100000) <= 0.05 *100000)) diap = 0;
+            else if (nDop <= 1000 && vDop <= 1000) diap = 1;
+            else if (nDop <= 5000 && vDop <= 5000) diap = 2;
+            else diap = 3;*/
+            if (nDop == -1 || (nDop <= 0.05)) diap = 0;
+            else if (nDop <= 1) diap = 4;
+            else if (nDop <= 10) diap = 5;
+            else if (nDop <= 100) diap = 6;
+            else if (nDop <= 1000.0) diap = 1;
+            else if (nDop <= 5000.0) diap = 2;
+            else diap = 3;
 
             float result{0};
+
+            bool voltReady = false;
+
+            if (diap >= 4 && diap <=6) voltReady = haveVolt();
 
 
             printMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" "));
@@ -4558,15 +4643,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 return false;
             }
 
-            int diap;
-            /*if (nDop == -1 || (int(nDop * 100000) <= 0.05 * 100000 && int(vDop*100000) <= 0.05 *100000)) diap = 0;
-            else if (nDop <= 1000 && vDop <= 1000) diap = 1;
-            else if (nDop <= 5000 && vDop <= 5000) diap = 2;
-            else diap = 3;*/
-            if (nDop == -1 || (nDop <= 0.05)) diap = 0;
-            else if (nDop <= 1000.0) diap = 1;
-            else if (nDop <= 5000.0) diap = 2;
-            else diap = 3;
+
 
             if (diap == 0){
                 c[0] = char(0x09);
@@ -4583,6 +4660,20 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     goto end_metka;
                 }
             } else{
+                if (diap >= 4 && !voltReady) {
+                    if (hasVoltMode) printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
+                    diap = 1;
+                }
+                if (diap >= 4) {
+                    result = getRWithVolt(diap-2);
+                    if (result == -1) {
+                        status = false;
+                        if (!resetVolt()) {
+                            QMessageBox::critical(nullptr, "Критическая ошибка", "Не удалось перевести вольтметр в защищенный режим. Все измерения заблокированы! Отключите вольтметр и перезагрузите ПО ВУ");
+                            blockAllIsm = true;
+                        }
+                    }
+                } else {
                 c[0] = char(0x08);
                 c[1] = char(diap);
                 c[2] = char(v100Mode);
@@ -4599,7 +4690,9 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     goto end_metka;
                 }
             }
+            }
             if (!status) return false;
+            if (diap < 4) {
             if (respondNU.length() == 2 + 4 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -4625,6 +4718,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
                 printInProt(errorMessage, "13", textStyle());
                 return false;
+            }
             }
 
             QString rrParName;
@@ -4751,7 +4845,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 tempTableSplit = tempTableSplit.replace("-", " ");
                 QStringList tableSplitList = tempTableSplit.split("|");
                 int lenCol = tableSplitList[2 + 1].length();
-                tableSplitList[2 + 1] = QString("(") + QString::number(infoSections[2].toDouble() * 1000, 'g', 2) + " Ом)";
+                tableSplitList[2 + 1] = QString("(") + QString::number(infoSections[2].toDouble() * 1000, 'f', 2) + " Ом)";
                 int needSpace = lenCol - tableSplitList[2 + 1].length();
                 int needSpaceLeft = needSpace / 2 + needSpace % 2;
                 int needSpaceRight = needSpace / 2;
@@ -4947,7 +5041,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
     case (DirectParser::TypeDirect::RR_PAR) :{
         if (dir.testParamDirect.count() > 101){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-            errorMessage.append("НЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
+            errorMessage.append("\t\t\tНЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
             printInProt(errorMessage, "13", textStyle());
             return false;
         }
@@ -5276,6 +5370,15 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             timeWork = m_timeWorkAppcp;
 
         }
+        {
+            QString tempPrintMessage = printMessage;
+            printMessage.append(dir.directive + " " + fullSaveFilePath);
+            printInProt(printMessage, "6", textStyle());
+            printMessage = tempPrintMessage;
+            printMessage.append(dir.directive + " " + fullNUSaveFilePath);
+            printInProt(printMessage, "6", textStyle());
+            printMessage = tempPrintMessage;
+        }
         if (timeWork.isEmpty()){
             printInProt(QString("\t\t\tНе удалось получить время работы АППЦП"), "13", directRunner::textStyle());
         } else{
@@ -5329,7 +5432,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
     case (DirectParser::TypeDirect::PNC) : {
             if (dir.testParamDirect.count() > 101){
                 errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                errorMessage.append("НЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
+                errorMessage.append("\t\t\tНЕДОПУСТИМОЕ КОЛИЧЕСТВО СТРОК В ДИРЕКТИВЕ");
                 printInProt(errorMessage, "13", textStyle());
                 return false;
             }
@@ -6387,6 +6490,7 @@ directRunner::~directRunner(){
 }
 
 void directRunner::connectNU(){
+
     if (socketCanal1->state() != QAbstractSocket::ConnectedState || socketCanal2->state() != QAbstractSocket::ConnectedState){
         /*socketCanal1->connectToHost("127.0.0.1", 0x4567);
         if (!socketCanal1->waitForConnected(3000)){
@@ -6415,6 +6519,86 @@ void directRunner::connectNU(){
         });
     } else{
         printInProt(QString("Связь с НУ уже установлена"), "23", textStyle());
+    }
+
+    if (MainWindow::getCfgParam("ВН_ПРИБОР") == "ДА") {
+        this->hasVoltMode = true;
+        if (voltSocket->state() != QAbstractSocket::ConnectedState) {
+            this->voltSocket->connectToHost("127.0.0.1", 0x4005);
+            printInProt(QString("Устанавливаем связь с Вольтметром"), "23", textStyle());
+            printInProt(QString("**********************************************"), "30", textStyle());
+            QTimer::singleShot(3000, this, [this](){
+               if (this->voltSocket->state() != QAbstractSocket::ConnectedState) {
+                    printInProt(QString("Ошибка установки связи с Вольтметром"), "13", textStyle());
+               } else {
+                   QByteArray cBA;
+                   cBA.append(char(0x01)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00));
+
+                   QEventLoop loop;
+                   QTimer timer;
+                   timer.setSingleShot(true);
+
+                   QMetaObject::Connection con3 = QObject::connect(voltSocket, &QTcpSocket::readyRead, [this](){
+            qDebug() << "VOLT";
+                               QByteArray answer = voltSocket->readAll();
+
+                               printInProt(QString("%1 NETCL: получено %2 байтов").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(answer.length()), "13", textStyle(), true);
+                               printInProt(QString("\t\t\tПолучено сообщ. volt"), "13", textStyle(), true);
+                               QStringList byteList;
+
+                               int count = 0;
+                               for (unsigned char byte: answer){
+                                   QString curByte;
+                                   if (count == 0) curByte.append("\t\t\t");
+                                   count += 1;
+                                   curByte.append(QString("0x") + QString("%1").arg(byte, 2, 16, QChar('0')).toUpper());
+                                   if (count >= 16){
+                                       curByte += "\n";
+                                       count = 0;
+                                   }
+                                   byteList << curByte;
+                               }
+                               byteList.first().prepend(" ");
+                               if (byteList.last().at(byteList.last().length()-1) == '\n') byteList.last().chop(1);
+                               printInProt(byteList.join(" "), "23", textStyle(), true);
+
+                               if (answer.length() != 8)
+                                   printInProt("Недопустимый размер сообщения от вольтметра", "13");
+                               if (answer[0] != char(0x01))
+                                   printInProt("Ответ от вольтметра получен на другую команду", "13");
+                               if (answer[1] != char(0x00))
+                                   printInProt(QString("Сбой в работе вольтметра: %1").arg(voltErrorCode[answer[1]]), "13");
+                               else
+                                this->voltReady = true;
+                           });
+
+                   QMetaObject::Connection con1 = QObject::connect(this, &directRunner::voltAnswer, [&loop, this](){
+                       loop.quit();
+                   });
+                   QMetaObject::Connection con2 = QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+                   voltSocket->write(cBA);
+                   voltSocket->flush();
+
+                   timer.start(6000);
+                   loop.exec();
+
+                   timer.stop();
+                   QObject::disconnect(con1);
+                   QObject::disconnect(con2);
+                   QObject::disconnect(con3);
+
+                   if (this->voltReady) {
+                       printInProt("Вольтметр готов к работе", "23", textStyle());
+                       QObject::connect(voltSocket, &QTcpSocket::readyRead, this, &directRunner::voltRR);
+                   } else {
+                       printInProt("Вольтметр недоступен", "13", textStyle());
+                   }
+               }
+            });
+        } else {
+            printInProt("Связь с вольтметром уже установлена!", "23", textStyle());
+        }
     }
 }
 
@@ -6679,6 +6863,10 @@ bool directRunner::runDirect(const DirectParser::Direct &direct){
         printInProt("Выполнение директивы недопустимо при открытом окне ручного режима!", "13", textStyle());
         return false;
     }
+    if (hasRunDirective.load() == 1) {
+        printInProt("Выполнение директивы недопустимо пока не заврешится предыдущая директика", "13", textStyle());
+        return false;
+    }
     hasRunDirective.store(1);
     runDirectFunc(direct);
     hasRunDirective.store(0);
@@ -6700,4 +6888,424 @@ void directRunner::unSetManualMode(){
 void directRunner::setTimeWorkAppcp(const QStringList &timeWorkAppcp){
     m_timeWorkAppcp = timeWorkAppcp;
     emit haveTimeWorkAppcp();
+}
+
+void directRunner::exitEvent() {
+    if (socketCanal1->state() != QAbstractSocket::ConnectedState)
+        return;
+
+    QByteArray cBA;
+    cBA.append(char(0xB0));
+
+    socketCanal1->write(cBA, cBA.length());
+    socketCanal1->flush();
+    return;
+}
+
+bool directRunner::haveVolt() {
+    if (!voltReady || voltSocket->state() != QAbstractSocket::ConnectedState)
+        return false;
+
+    QByteArray cBA;
+    cBA.append(char(0x01)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00));
+
+    voltResponse.clear();
+
+
+
+    //voltSocket->write(cBA);
+    //voltSocket->flush();
+
+
+    QEventLoop loop;
+    QTimer timer;
+    timer.setSingleShot(true);
+
+    QMetaObject::Connection con1 = QObject::connect(this, &directRunner::voltAnswer, [&loop](){
+        qDebug() << "signal recived";
+        loop.quit();
+    });
+    QMetaObject::Connection con2 = QObject::connect(&timer, &QTimer::timeout, [&loop](){
+        qDebug() << "timer end";
+        loop.quit();
+    });
+
+    voltSocket->write(cBA);
+    voltSocket->flush();
+
+    timer.start(600);
+    loop.exec();
+
+    timer.stop();
+    QObject::disconnect(con1);
+    QObject::disconnect(con2);
+
+    if (voltResponse.count() != 8) {
+        qDebug() << "response : " << voltResponse;
+        qDebug() << "count: " << voltResponse.count();
+        printInProt("Недопустимое количество байт в ответе от вольтметра", "13");
+        return false;
+    }
+
+    if (voltResponse[0] != cBA[0]) {
+        printInProt("Ответ от вольтметра получен на другую команду", "13");
+        return false;
+    }
+
+    if (voltResponse[1] != char(0x00)) {
+        printInProt(QString("Ошибка выполнения операции в вольтметре: %1").arg(voltErrorCode[voltResponse[1]]), "13");
+        return false;
+    }
+
+    QString errorMessage;
+    QString printMessage;
+
+
+    cBA.clear();
+    cBA.append(char(0x0a));
+    bool status{false};
+    sendMessageToNU(cBA.constData(), cBA.length(), &status);
+
+    if (!status) return false;
+    if (respondNU.length() == 2 && respondNU.at(1) == 0){
+        //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+        printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+        printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+    }
+    else if (respondNU.length() != 2){
+        errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+        printInProt(errorMessage, "13", textStyle());
+        return false;
+    }
+    else if (respondNU.at(1) == -1){
+        errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+        printInProt(errorMessage, "13", textStyle());
+        return false;
+    }
+    cBA.clear();
+    printMessage.clear();
+    errorMessage.clear();
+
+
+    cBA.clear();
+    cBA.append(0x22).append(0x01);
+    sendMessageToNU(cBA, cBA.length(), &status);
+    if (!status){
+        errorMessage.append("Ошибка при выполнении команды в НУ");
+        printInProt(errorMessage, "13", textStyle());
+        return false;
+    }
+    if (respondNU.length() != 2){
+        errorMessage.append("Ошибка в полученном ответе от НУ (ожидалось 2 байта)");
+        printInProt(errorMessage, "13", textStyle());
+        return false;
+    }
+    if (respondNU.at(1) == -1){
+        errorMessage.append("Ошибка в аппаратуре НУ");
+        printInProt(errorMessage, "13", textStyle());
+        return false;
+    }
+    printMessage.append("Сопртивление 1 МОм подключено к корпусу");
+    printInProt(printMessage, "30", textStyle());
+
+
+    cBA.clear();
+    printMessage.clear();
+    errorMessage.clear();
+    cBA.append(char(0x02));
+    cBA.append(char(1));
+    cBA.append(char(0x100));
+    sendMessageToNU(cBA.constData(), cBA.length(), &status);
+
+    if (!status) return false;
+    if (respondNU.length() == 2 && respondNU.at(1) == 0){
+        //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+        printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+        printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+    }
+    else if (respondNU.length() != 2){
+        errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+        printInProt(errorMessage, "13", textStyle());
+        return false;
+    }
+    else if (respondNU.at(1) == -1){
+        errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+        printInProt(errorMessage, "13", textStyle());
+        return false;
+    }
+    cBA.clear();
+
+    cBA.append(char(0x09));
+    sendMessageToNU(cBA.constData(), cBA.length(), &status);
+    float result{0};
+    if (!status) return false;
+    if (respondNU.length() == 2 + 4 && respondNU.at(1) == 0){
+    //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+        printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+        QByteArray floatData = respondNU.mid(2);
+        std::memcpy(&result, floatData.constData(), sizeof(result));
+        if (std::isnan(result) || std::isinf(result)){
+            errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
+            printInProt(errorMessage, "13", textStyle());
+            return false;
+        }
+    }
+    cBA.clear();
+    printMessage.clear();
+    errorMessage.clear();
+
+    cBA.clear();
+    cBA.append(char(0x0a));
+    sendMessageToNU(cBA.constData(), cBA.length(), &status);
+
+    if (!status) return false;
+    if (respondNU.length() == 2 && respondNU.at(1) == 0){
+        //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
+        printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+        printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+    }
+    else if (respondNU.length() != 2){
+        errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
+        printInProt(errorMessage, "13", textStyle());
+        return false;
+    }
+    else if (respondNU.at(1) == -1){
+        errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
+        printInProt(errorMessage, "13", textStyle());
+        return false;
+    }
+
+    if (result >= 0 - 150 && result <= 0 + 150)
+        return true;
+    else
+        return false;
+}
+
+double directRunner::getRWithVolt(int diap) {
+    if (!voltReady || voltSocket->state() != QAbstractSocket::ConnectedState)
+        return -1;
+
+    QByteArray cBA;
+    cBA.append(char(0x01)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00));
+
+    voltResponse.clear();
+
+
+
+    //voltSocket->write(cBA);
+    //voltSocket->flush();
+
+
+    QEventLoop loop;
+    QTimer timer;
+    timer.setSingleShot(true);
+
+    QMetaObject::Connection con1 = QObject::connect(this, &directRunner::voltAnswer, [&loop](){
+        loop.quit();
+        qDebug() << "signal recived";
+    });
+    QMetaObject::Connection con2 = QObject::connect(&timer, &QTimer::timeout, [&loop](){
+        loop.quit();
+        qDebug() << "timer end";
+    });
+
+    voltSocket->write(cBA);
+    voltSocket->flush();
+
+    timer.start(600);
+    loop.exec();
+
+    timer.stop();
+    QObject::disconnect(con1);
+    QObject::disconnect(con2);
+
+    if (voltResponse.count() != 8) {
+        qDebug() << voltResponse;
+        printInProt("Недопустимое количество байт в ответе от вольтметра", "13");
+        return -1;
+    }
+
+    if (voltResponse[0] != cBA[0]) {
+        printInProt("Ответ от вольтметра получен на другую команду", "13");
+        return -1;
+    }
+
+    if (voltResponse[1] != char(0x00)) {
+        printInProt(QString("Ошибка выполнения операции в вольтметре: %1").arg(voltErrorCode[voltResponse[1]]), "13");
+        return -1;
+    }
+
+
+    cBA.clear();
+    cBA.append(char(0x02)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(diap)).append(char(0x00)).append(char(0x00));
+
+    voltResponse.clear();
+
+
+
+    //voltSocket->write(cBA);
+    //voltSocket->flush();
+
+
+    timer.setSingleShot(true);
+
+    con1 = QObject::connect(this, &directRunner::voltAnswer, [&loop](){
+        loop.quit();
+    });
+    con2 = QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    voltSocket->write(cBA);
+    voltSocket->flush();
+
+    timer.start(600);
+    loop.exec();
+
+    timer.stop();
+    QObject::disconnect(con1);
+    QObject::disconnect(con2);
+
+    if (voltResponse.count() != 8) {
+        printInProt("Недопустимое количество байт в ответе от вольтметра", "13");
+        return -1;
+    }
+
+    if (voltResponse[0] != cBA[0]) {
+        printInProt("Ответ от вольтметра получен на другую команду", "13");
+        return -1;
+    }
+
+    if (voltResponse[1] != char(0x00)) {
+        printInProt(QString("Ошибка выполнения операции в вольтметре: %1").arg(voltErrorCode[voltResponse[1]]), "13");
+        return -1;
+    }
+
+    QByteArray floatData = respondNU.mid(2);
+    quint32 result{0};
+    std::memcpy(&result, floatData.constData(), sizeof(result));
+    if (std::isnan(result) || std::isinf(result)){
+        printInProt("Ошибка в полученном ответе от вольтметра (неудалось получить значение)", "13", textStyle());
+        return -1;
+    }
+
+
+    cBA.clear();
+    cBA.append(char(0x03)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00));
+
+    voltResponse.clear();
+
+
+
+    //voltSocket->write(cBA);
+    //voltSocket->flush();
+
+
+    timer.setSingleShot(true);
+
+    con1 = QObject::connect(this, &directRunner::voltAnswer, [&loop](){
+        loop.quit();
+    });
+    con2 = QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    voltSocket->write(cBA);
+    voltSocket->flush();
+
+    timer.start(600);
+    loop.exec();
+
+    timer.stop();
+    QObject::disconnect(con1);
+    QObject::disconnect(con2);
+
+    if (voltResponse.count() != 8) {
+        printInProt("Недопустимое количество байт в ответе от вольтметра", "13");
+        return -1;
+    }
+
+    if (voltResponse[0] != cBA[0]) {
+        printInProt("Ответ от вольтметра получен на другую команду", "13");
+        return -1;
+    }
+
+    if (voltResponse[1] != char(0x00)) {
+        printInProt(QString("Ошибка выполнения операции в вольтметре: %1").arg(voltErrorCode[voltResponse[1]]), "13");
+        return -1;
+    }
+
+    return double(result)/1000000;
+}
+
+bool directRunner::resetVolt() {
+    QByteArray cBA;
+    cBA.clear();
+    cBA.append(char(0x03)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00));
+
+    voltResponse.clear();
+
+
+
+    //voltSocket->write(cBA);
+    //voltSocket->flush();
+    QTimer timer;
+    QEventLoop loop;
+
+    timer.setSingleShot(true);
+
+    QMetaObject::Connection con1 = QObject::connect(this, &directRunner::voltAnswer, [&loop](){
+        loop.quit();
+    });
+    QMetaObject::Connection con2 = QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    voltSocket->write(cBA);
+    voltSocket->flush();
+
+    timer.start(600);
+    loop.exec();
+
+    timer.stop();
+    QObject::disconnect(con1);
+    QObject::disconnect(con2);
+
+    if (voltResponse.count() != 8) {
+        printInProt("Недопустимое количество байт в ответе от вольтметра", "13");
+        return false;
+    }
+
+    if (voltResponse[0] != cBA[0]) {
+        printInProt("Ответ от вольтметра получен на другую команду", "13");
+        return false;
+    }
+
+    if (voltResponse[1] != char(0x00)) {
+        printInProt(QString("Ошибка выполнения операции в вольтметре: %1").arg(voltErrorCode[voltResponse[1]]), "13");
+        return false;
+    }
+    return true;
+}
+
+void directRunner::voltRR() {
+    voltResponse.clear();
+    QByteArray answer = voltSocket->readAll();
+    voltResponse = answer;
+
+    printInProt(QString("%1 NETCL: получено %2 байтов").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(answer.length()), "13", textStyle(), true);
+    printInProt(QString("\t\t\tПолучено сообщ. volt"), "23", textStyle(), true);
+    QStringList byteList;
+
+    int count = 0;
+    for (unsigned char byte: answer){
+        QString curByte;
+        if (count == 0) curByte.append("\t\t\t");
+        count += 1;
+        curByte.append(QString("0x") + QString("%1").arg(byte, 2, 16, QChar('0')).toUpper());
+        if (count >= 16){
+            curByte += "\n";
+            count = 0;
+        }
+        byteList << curByte;
+    }
+    byteList.first().prepend(" ");
+    if (byteList.last().at(byteList.last().length()-1) == '\n') byteList.last().chop(1);
+    printInProt(byteList.join(" "), "23", textStyle(), true);
+
+    emit voltAnswer();
 }

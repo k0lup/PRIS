@@ -7,6 +7,7 @@
 #include <QStandardItemModel>
 #include <QtWidgets>
 #include "protmanager.h"
+#include "jsonreceiver.h"
 #include <QTcpSocket>
 
 class directRunner : public QObject
@@ -103,6 +104,8 @@ signals:
 
     void requestTimeWorkAppcp();
     void haveTimeWorkAppcp();
+
+    void voltAnswer();
 public slots:
     void setVarinatkVar(const QString& var, bool stopProg);
 
@@ -121,6 +124,10 @@ public slots:
     void disconnectNU();
 
     void setTimeWorkAppcp(const QStringList& timeWorkAppcp);
+
+    void exitEvent();
+
+    void voltRR();
 private:
     QAtomicInt waitNUMessage;
     QString GL_VAR;
@@ -165,6 +172,22 @@ private:
     bool can2RR;
 
     QString stopMessageStr;
+
+    JsonReceiver *jsonReceiver;
+
+
+    QTcpSocket *voltSocket;
+
+    bool hasVoltMode;
+    bool voltReady;
+
+    bool haveVolt();
+    double getRWithVolt(int diap);
+    bool resetVolt();
+
+    bool blockAllIsm;
+
+    QByteArray voltResponse;
 
 };
 

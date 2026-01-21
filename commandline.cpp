@@ -9,7 +9,8 @@ CommandLine::CommandLine(QWidget *parent) : QWidget(parent)
     lineEdit = new QLineEdit(this);
 
     historyBtn = new QToolButton(this);
-    historyBtn->setText("H");
+    //historyBtn->setText("H");
+    historyBtn->setIcon(QIcon(":/img/img/histBtn.png"));
     historyBtn->setCursor(Qt::ArrowCursor);
     historyBtn->setStyleSheet("QToolButton {border: none;}");
 

@@ -78,6 +78,7 @@ signals:
     void printMessageToProtocol(const QString& message, const QString& style, directRunner::textStyle tStyle = directRunner::textStyle(), bool nuMessage = false, bool onlyNUFile = true);
 
     void sendTimeWorkAppcp(const QStringList& timeWorkAppcp);
+    void sendExitEventToNU();
 protected:
     void closeEvent(QCloseEvent *event) override;
 private:

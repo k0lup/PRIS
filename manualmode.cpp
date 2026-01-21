@@ -20,6 +20,7 @@ const QString yellowBtnStyle{QString(R"(
 
 ManualMode::ManualMode(QWidget *parent) : QWidget(parent)
 {
+    this->setWindowTitle("Ручное управление");
     this->contStatus.fill(ContStatus::DISCONNECTED, 101);
     textEdit = new QTextEdit(this);
     textEdit->setMaximumHeight(this->height() * 0.1);

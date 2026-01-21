@@ -13,5 +13,7 @@
         <file>img/arrowUP.png</file>
         <file>img/arrowUPToEnd.png</file>
         <file>img/ground.png</file>
+        <file>img/histBtn.png</file>
+        <file>img/print.png</file>
     </qresource>
 </RCC>
