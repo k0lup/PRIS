@@ -1,5 +1,7 @@
 *.mdb
 *.pro
 *.user
+*.kate-swp
 reserveDirectParser.txt
 img/
+build/
