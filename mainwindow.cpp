@@ -55,7 +55,7 @@ MainWindow::MainWindow(QWidget *parent)
         return;
     }
     if (!readConfigFile(filePath, paramValues)){
-        QString errorMessage(QString("CFG_NOT_OPEN"));
+        QString errorMessage(QString("Не удалось открыть файл конфигурации!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
@@ -75,7 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
         return;
     }
     if (!readConfigFile(fileOnPath, paramOnValues)){
-        QString errorMessage(QString("ON_NOT_OPEN"));
+        QString errorMessage(QString("Не удалось открыть файл настройки"));
         //QMessageBox::critical(nullptr, "Ошибка", errorMessage);
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
@@ -585,7 +585,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QString dbFilePath = paramOnValues.value("РР_ПАРАМЕТРЫ");
     if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
-        QString errorMessage(QString("RR_DB_NOT_OPEN"));
+        QString errorMessage(QString("Не удалось открыть БД РР параметров!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
@@ -606,7 +606,7 @@ MainWindow::MainWindow(QWidget *parent)
     rrParDB.setDatabaseName(dbFilePath);
 
     if (!rrParDB.open()){
-        QString errorMessage(QString("RR_DB_NOT_OPEN"));
+        QString errorMessage(QString("Не удалось открыть БД РР параметров!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
@@ -619,7 +619,7 @@ MainWindow::MainWindow(QWidget *parent)
     ipAppcpServ = paramValues.value("СЕРВЕР_АППЦП");
 
     if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
-        QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
+        QString errorMessage(QString("Не удалось открыть БД параметров АППЦП!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
@@ -631,7 +631,7 @@ MainWindow::MainWindow(QWidget *parent)
     QFile(dbFilePath).setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     appcpParDB.setDatabaseName(dbFilePath);
     if (!appcpParDB.open()){
-        QString errorMessage(QString("APPCP_DB_NOT_OPEN"));
+        QString errorMessage(QString("Не удалось открыть БД параметров АППЦП!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
