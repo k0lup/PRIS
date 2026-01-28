@@ -46,7 +46,7 @@ MainWindow::MainWindow(QWidget *parent)
     if (!dir.exists()) dir.mkpath(".");
     QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл конфигурации", "", "*.cfg");
     if (filePath.isEmpty() || QFileInfo(filePath).suffix().toUpper() != "CFG"){
-        QString errorMessage(QString("CFG_NOT_OPEN"));
+        QString errorMessage(QString("Не удалось открыть файл конфигурации"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
@@ -55,7 +55,7 @@ MainWindow::MainWindow(QWidget *parent)
         return;
     }
     if (!readConfigFile(filePath, paramValues)){
-        QString errorMessage(QString("Не удалось открыть файл конфигурации!"));
+        QString errorMessage(QString("Не удалось прочитать файл конфигурации!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
@@ -66,7 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
     cfgFilePath = filePath;
     QString fileOnPath = QFileDialog::getOpenFileName(this, "Выберите файл настройки", "", "*.on");
     if (fileOnPath.isEmpty() || QFileInfo(fileOnPath).suffix().toUpper() != "ON"){
-        QString errorMessage(QString("ON_NOT_OPEN"));
+        QString errorMessage(QString("Не удалось открыть файл настройки!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
@@ -75,7 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
         return;
     }
     if (!readConfigFile(fileOnPath, paramOnValues)){
-        QString errorMessage(QString("Не удалось открыть файл настройки"));
+        QString errorMessage(QString("Не удалось прочитать файл настройки"));
         //QMessageBox::critical(nullptr, "Ошибка", errorMessage);
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);

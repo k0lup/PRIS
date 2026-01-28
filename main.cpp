@@ -7,6 +7,7 @@
 #include <QtWidgets>
 
 #include <QApplication>
+#include <QMessageBox>
 #include <QMetaType>
 
 #include "stepwgt.h"
@@ -28,6 +29,20 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     QCoreApplication::setOrganizationName("RKK Energia");
     QCoreApplication::setApplicationName("PRIS CROSSPLATFORM APP");
+    const QString lockDir =
+            QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation).isEmpty()
+            ? QDir::tempPath()
+            : QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+
+    QDir().mkpath(lockDir);
+
+    QLockFile lock(lockDir + "/myapp.lock");
+    lock.setStaleLockTime(0); // 0 = Qt сам решает, когда считать lock "протухшим"
+
+    if (!lock.tryLock(0)) {
+        QMessageBox::critical(nullptr, "Ошибка", "Приложение уже запущено!");
+        return 0;
+    }
     MainWindow w;
     if (!w.statusOpenned) return -1;
     w.show();

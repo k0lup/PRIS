@@ -21,7 +21,8 @@ SOURCES += \
     rrparam.cpp \
     stepwgt.cpp \
     textsearcher.cpp \
-    widgetinfo.cpp
+    widgetinfo.cpp \
+    jsonreceiver.cpp
 
 HEADERS += \
     commandline.h \
@@ -36,7 +37,8 @@ HEADERS += \
     rrparam.h \
     stepwgt.h \
     textsearcher.h \
-    widgetinfo.h
+    widgetinfo.h \
+    jsonreceiver.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
