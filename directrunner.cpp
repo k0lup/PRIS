@@ -4955,6 +4955,8 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             }
             return false;
         }
+        ost_flag.store(0);
+        m_ost_flag.store(0);
         if (programs.count() == 0 || programs.last().blockRun){
             printMessage.append(dir.directive + " ДИРЕКТИВА НЕДОПУСТИМА");
             //protocol->append(printMessage);
@@ -4970,8 +4972,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         {
             printInProt(printMessage, "0", textStyle());
         }
-        ost_flag.store(0);
-        m_ost_flag.store(0);
         if (programs.length() >= 1) programs.last().infoStopMsg.clear();
         emit this->unsetStopState();
         runProgram(/*protocol, protocloWgt, programInfomodel*/);
