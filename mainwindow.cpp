@@ -2100,35 +2100,64 @@ void MainWindow::showInfoStopWindow(const QString& infoMessage){
     infoStopWindow->show();
 }
 
-void MainWindow::closeEvent(QCloseEvent *event){
-    if (programInfomodel->rowCount() >= 1){
-        QMessageBox::critical(nullptr, "ПРИС", "НЕЛЬЗЯ ЗАКОНЧИТЬ СЕАНС ПОКА ЕСТЬ НЕЗАВЕРШЕННЫЕ ЦГ");
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    if (programInfomodel->rowCount() >= 1) {
+        QMessageBox::critical(this, "ПРИС",
+                              "НЕЛЬЗЯ ЗАКОНЧИТЬ СЕАНС ПОКА ЕСТЬ НЕЗАВЕРШЕННЫЕ ЦГ");
         event->ignore();
-    } else{
-        QMessageBox msgBox;
-        msgBox.setWindowFlags(msgBox.windowFlags() | Qt::WindowStaysOnTopHint);
-        msgBox.setWindowTitle("АППЦП");
-        msgBox.setText("ЗАВЕРШИТЬ СЕАНС?");
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setButtonText(QMessageBox::Yes, "Да");
-        msgBox.setButtonText(QMessageBox::No, "Нет");
-        msgBox.setDefaultButton(QMessageBox::No);
-
-        int result = msgBox.exec();
-        if (result == QMessageBox::No){
-            event->ignore();
-        } else{
-            dirRunner->printInProt(QString("\t\t%1\tКонец сенаса").arg(QDateTime::currentDateTime().toString("HH:mm:ss")), "0");
-            QStringList timeWork = getTimeWorkAppcp();
-            if (timeWork.isEmpty()){
-                dirRunner->printInProt(QString("\t\t\tНе удалось получить время работы АППЦП"), "13", directRunner::textStyle());
-            } else{
-                dirRunner->printInProt(QString("\t\t\tВремя работы АППЦП:\n"
-                                               "\t\t\tЗа текущий день: %1\n"
-                                               "\t\t\tЗа текущий месяц: %2\n").arg(timeWork[0]).arg(timeWork[1]), "0", directRunner::textStyle());
-            }
-            QApplication::closeAllWindows();
-            event->accept();
-        }
+        return;
     }
+
+    QMessageBox msgBox(this);
+    msgBox.setWindowFlags(msgBox.windowFlags() | Qt::WindowStaysOnTopHint);
+    msgBox.setWindowTitle("АППЦП");
+    msgBox.setText("ЗАВЕРШИТЬ СЕАНС?");
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setButtonText(QMessageBox::Yes, "Да");
+    msgBox.setButtonText(QMessageBox::No, "Нет");
+    msgBox.setDefaultButton(QMessageBox::No);
+
+    if (msgBox.exec() == QMessageBox::No) {
+        event->ignore();
+        return;
+    }
+
+    // Логи/протокол — ок, но если dirRunner в другом потоке и может блокировать,
+    // лучше перенести в singleShot тоже.
+    dirRunner->printInProt(QString("\t\t%1\tКонец сенаса")
+                           .arg(QDateTime::currentDateTime().toString("HH:mm:ss")), "0");
+
+    QStringList timeWork = getTimeWorkAppcp();
+    if (timeWork.isEmpty()) {
+        dirRunner->printInProt(QString("\t\t\tНе удалось получить время работы АППЦП"),
+                               "13", directRunner::textStyle());
+    } else {
+        dirRunner->printInProt(QString("\t\t\tВремя работы АППЦП:\n"
+                                       "\t\t\tЗа текущий день: %1\n"
+                                       "\t\t\tЗа текущий месяц: %2\n")
+                               .arg(timeWork[0]).arg(timeWork[1]),
+                               "0", directRunner::textStyle());
+    }
+
+    event->accept();
+
+    QTimer::singleShot(0, this, []{
+        qInfo() << "---- TOPLEVELS after accept ----";
+        for (auto *t : QApplication::topLevelWidgets()) {
+            qInfo() << t
+                    << "visible=" << t->isVisible()
+                    << "title=" << t->windowTitle()
+                    << "parent=" << t->parent();
+        }
+
+        for (QWidget *w : QApplication::topLevelWidgets()) {
+            if (qobject_cast<QMenu*>(w) || qobject_cast<QDialog*>(w)) {
+                w->close();
+                w->deleteLater();
+            }
+        }
+
+        QCoreApplication::quit();
+    });
 }
