@@ -31,7 +31,7 @@ public:
     bool statusOpenned;
 
     static QSqlQuery getQueryRRDB(const QString& queryString);
-    static QString getCurCatalog();
+    //static QString getCurCatalog();
 
     static QString getNumProduct(){return numProduct;}
 
@@ -47,6 +47,9 @@ public:
 
     static QString getCfgFilePath(){ return cfgFilePath; }
     static QString getOnFilePath(){ return onFilePath; }
+
+    static QStringList getProgramCatalog() {return curCatalogs;}
+    static QString getSaveProtPath() {return curSaveProtPath;}
 public slots:
     void showVariantDialogWindow(const QString& text, const QStringList& variants);
 
@@ -86,15 +89,17 @@ private:
     //QWidget *commandWidget;
     static QString numProduct;
 
-    bool readConfigFile(const QString& filePath, QMap<QString, QString>& paramMap);
+    bool readConfigFile(const QString& filePath, QMap<QString, QString>& paramMap, QString& error);
     static QMap<QString, QString> paramValues;
     static QMap<QString, QString> paramOnValues;
     static QSqlDatabase rrParDB;
     static QSqlDatabase appcpParDB;
-    static QString curCatalog;
+    //static QString curCatalog;
+    static QStringList curCatalogs;
 
     static QString cfgFilePath;
     static QString onFilePath;
+    static QString curSaveProtPath;
     //QString getConfigParam(const QString& paramName);
 
     directRunner *dirRunner;

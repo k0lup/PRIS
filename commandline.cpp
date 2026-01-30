@@ -59,7 +59,7 @@ CommandLine::CommandLine(QWidget *parent) : QWidget(parent)
 
     QObject::connect(lineEdit, &QLineEdit::textChanged, [this](const QString& text){
         if (text == "СП "){
-            QDir dir(MainWindow::getCurCatalog());
+            QDir dir(MainWindow::getSaveProtPath());
             QString newText;
             if (dir.exists()) newText = text + dir.dirName();
             else newText = text;

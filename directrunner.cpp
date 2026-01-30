@@ -138,7 +138,7 @@ void directRunner::printStartMessage(){
     printInProt(QString("------------СТАРТ ПРИС---------------"), "0", textStyle());
     printInProt(QDateTime::currentDateTime().toString("dd.MM.yyyy") + " " + QDateTime::currentDateTime().toString("HH:mm:ss") + " " + MainWindow::getOnFilePath() + " " + MainWindow::getCfgFilePath(), "0", textStyle());
     printInProt(QString("Каталог загрузки:   ") + QCoreApplication::applicationDirPath(), "0", textStyle());
-    printInProt(QString("Текущий каталог:    " + MainWindow::getCurCatalog()), "0", textStyle());
+    printInProt(QString("Текущий каталог:    " + MainWindow::getProgramCatalog().value(0)), "0", textStyle());
     printInProt(QString("Версия ПРИС:        ") + MainWindow::getCfgParam("НОМЕР_ВЕРСИИ"), "0", textStyle());
     printInProt(QString("КА:                 ") + MainWindow::getCfgParam("КОСМИЧЕСКИЙ_АППАРАТ"), "0", textStyle());
     printInProt(QString("-------------------------------------"), "0", textStyle());
@@ -1538,9 +1538,14 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             }
             return false;
         }
-        QString catalog = MainWindow::getCurCatalog();
+        QStringList catalogs = MainWindow::getProgramCatalog();
         if (QFileInfo(fileName).suffix().isEmpty()) fileName.append(".dip");
-        QString fullFilePath = findFileRecursive(catalog, fileName);
+        QString fullFilePath = "";
+        for (const QString& catalog : catalogs) {
+            fullFilePath = findFileRecursive(catalog, fileName);
+            if (!fullFilePath.isEmpty())
+                break;
+        }
         if (fullFilePath.isEmpty() || fullFilePath == ""){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             if (dir.numDirect > -1){

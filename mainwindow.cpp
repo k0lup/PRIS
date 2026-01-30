@@ -19,10 +19,12 @@
 
 QSqlDatabase MainWindow::rrParDB = QSqlDatabase();
 QSqlDatabase MainWindow::appcpParDB = QSqlDatabase();
-QString MainWindow::curCatalog = "";
+//QString MainWindow::curCatalog = "";
+QStringList MainWindow::curCatalogs = {};
 QString MainWindow::numProduct = "";
 QString MainWindow::cfgFilePath = "";
 QString MainWindow::onFilePath = "";
+QString MainWindow::curSaveProtPath = "";
 
 QMap<QString, QString> MainWindow::paramOnValues = QMap<QString, QString>();
 QMap<QString, QString> MainWindow::paramValues = QMap<QString, QString>();
@@ -32,10 +34,9 @@ QMap<QString, contactAppcp> appcpParam = QMap<QString, contactAppcp>();
 const static QString TIME_CONTROL_MEMORY = "TimerControlAppcp284v2";
 const static QString LOCAL_SERVER_TIME_CONTROL = "TimeControlAppcp284Server";
 
-QString MainWindow::getCurCatalog(){
+/*QString MainWindow::getCurCatalog(){
     return curCatalog;
-}
-
+}*/
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
@@ -44,7 +45,7 @@ MainWindow::MainWindow(QWidget *parent)
     //blockDirectRun.store(0);
     QDir dir(QDir::homePath());
     if (!dir.exists()) dir.mkpath(".");
-    QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл конфигурации", "", "*.cfg");
+    QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл конфигурации", "", "Файлы конфигурации (*.cfg)");
     if (filePath.isEmpty() || QFileInfo(filePath).suffix().toUpper() != "CFG"){
         QString errorMessage(QString("Не удалось открыть файл конфигурации"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
@@ -54,8 +55,9 @@ MainWindow::MainWindow(QWidget *parent)
         //QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         return;
     }
-    if (!readConfigFile(filePath, paramValues)){
-        QString errorMessage(QString("Не удалось прочитать файл конфигурации!"));
+    QString error_read_config;
+    if (!readConfigFile(filePath, paramValues, error_read_config)){
+        QString errorMessage(QString("Не удалось прочитать файл конфигурации!\n") + error_read_config);
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
@@ -64,7 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
         return;
     }
     cfgFilePath = filePath;
-    QString fileOnPath = QFileDialog::getOpenFileName(this, "Выберите файл настройки", "", "*.on");
+    QString fileOnPath = QFileDialog::getOpenFileName(this, "Выберите файл настройки", "", "Файлы настроек (*.on)");
     if (fileOnPath.isEmpty() || QFileInfo(fileOnPath).suffix().toUpper() != "ON"){
         QString errorMessage(QString("Не удалось открыть файл настройки!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
@@ -74,8 +76,9 @@ MainWindow::MainWindow(QWidget *parent)
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
         return;
     }
-    if (!readConfigFile(fileOnPath, paramOnValues)){
-        QString errorMessage(QString("Не удалось прочитать файл настройки"));
+    error_read_config.clear();
+    if (!readConfigFile(fileOnPath, paramOnValues, error_read_config)){
+        QString errorMessage(QString("Не удалось прочитать файл настройки\n") + error_read_config);
         //QMessageBox::critical(nullptr, "Ошибка", errorMessage);
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
@@ -142,8 +145,40 @@ MainWindow::MainWindow(QWidget *parent)
         }
     }
 
-    this->curCatalog = paramOnValues.value("ПРОГРАММЫ");
-    if (curCatalog.isEmpty()) this->curCatalog = QCoreApplication::applicationDirPath();
+    QString curCatalog = paramOnValues.value("ПРОГРАММЫ");
+    if (curCatalog.isEmpty()) curCatalog = QCoreApplication::applicationDirPath();
+
+    QStringList parts = curCatalog.split(';', Qt::SkipEmptyParts);
+    curCatalogs.reserve(parts.size());
+
+    const QString home = QDir::homePath();
+
+    for (QString path : parts)
+    {
+        // 1–2. убрать пробелы
+        path = path.trimmed();
+        if (path.isEmpty())
+            continue;
+
+        // 3. заменить "~", "~/", "~\"
+        if (path == "~")
+        {
+            path = home;
+        }
+        else if (path.startsWith("~/") || path.startsWith("~\\"))
+        {
+            path = home + "/" + path.mid(2);
+        }
+
+        // 4. кроссплатформенный формат + нормализация
+        path = QDir::fromNativeSeparators(path);
+        path = QDir::cleanPath(path);
+
+        curCatalogs.push_back(path);
+    }
+
+    MainWindow::curSaveProtPath = paramOnValues.value("ПРОГРАММЫ");
+    if (curSaveProtPath.isEmpty()) curSaveProtPath = QCoreApplication::applicationDirPath();
 
 
     //dirRunner = &directRunner::instance();
@@ -1555,7 +1590,9 @@ MainWindow::MainWindow(QWidget *parent)
     QObject::connect(catalogSelect, &QAction::triggered, [this](){
        QString catalog = QFileDialog::getExistingDirectory(this, "Выберите каталог", QDir::homePath(), QFileDialog::ShowDirsOnly);
        if (!catalog.isEmpty() && QDir(catalog).exists()){
-           this->curCatalog = catalog;
+           //this->curCatalog = catalog;
+           this->curCatalogs.clear();
+           this->curCatalogs.append(catalog);
            emit this->printMessageToProtocol(QString("Каталог: %1").arg(catalog), "0");
        }
     });
@@ -1687,7 +1724,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     QObject::connect(dipFileSelect, &QAction::triggered, [this, commandLine](){
-        QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл циклограммы", MainWindow::getCurCatalog(), "*.dip");
+        QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл циклограммы", MainWindow::getProgramCatalog().value(0), "Файлы циклограмм (*.dip)");
         if (filePath.isEmpty() || QFileInfo(filePath).suffix().toUpper() != "DIP"){
             return;
         } else{
@@ -1696,7 +1733,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     QObject::connect(fileSelect, &QAction::triggered, [this, commandLine](){
-        QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл циклограммы", MainWindow::getCurCatalog());
+        QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл циклограммы", MainWindow::getProgramCatalog().value(0));
         if (filePath.isEmpty()){
             return;
         } else{
@@ -1801,9 +1838,10 @@ MainWindow::MainWindow(QWidget *parent)
     }
 }
 
-bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>& paramMap){
+bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>& paramMap, QString& error){
     QFile configFile(filePath);
     if (!configFile.open(QIODevice::ReadOnly | QIODevice::Text)){
+        error = "Не удалось открыть файл " + filePath + "!";
         return false;
     }
 
@@ -1815,7 +1853,8 @@ bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>&
         if (!line.contains(QChar('='))) continue;
 
         QStringList param = line.split("=");
-        if (paramMap.contains(param[0])){
+        if (paramMap.contains(param[0]) && param[0] != "ПРОГРАММЫ"){
+            error = QString("ПАРАМЕТР ") + param[0] + " встречен в файле " + filePath + " повторно!";
             return false;
         }
         if (param[1].contains("//")){
@@ -1824,7 +1863,13 @@ bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>&
         if (param[1].startsWith("~/")){
             param[1] = QDir::home().filePath(param[1].mid(2));
         }
-        paramMap.insert(param[0], param[1]);
+        if (!paramMap.contains(param[0])) {
+            paramMap.insert(param[0], param[1]);
+        } else {
+            if (paramMap[param[0]].back() != ';')
+                paramMap[param[0]].append(QString(";"));
+            paramMap[param[0]].append(param[1]);
+        }
     }
     return true;
 }
