@@ -18,8 +18,9 @@ public:
 
     bool saveFile(const QString& savePath, const QString& saveNUPath);
     bool isProtActive(){return activeProt;}
-    QString getAllFileDate();
-    QString getNewFileDate();
+    QString getAllFileDate(QString& errorText);
+    bool isValidProt(QString& errorText);
+    QString getNewFileDate(QString& errorText);
     QString getFilePath();
 signals:
     void fileUpdate();

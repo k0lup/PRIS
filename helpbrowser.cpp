@@ -7,6 +7,7 @@ HelpBrowser::HelpBrowser(QHelpEngine* helpEngine, QWidget* parent) : QTextBrowse
 }
 
 QVariant HelpBrowser::loadResource(int type, const QUrl &name){
+    qDebug() << "tBr: " << name;
     if (name.scheme() == "qthelp"){
         return QVariant(helpEngine->fileData(name));
     } else {

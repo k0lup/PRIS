@@ -274,13 +274,13 @@ MainWindow::MainWindow(QWidget *parent)
     QAction *setConnectNU = traktMenu->addAction("Установить связь с НУ");
     QAction *disconnectNU = traktMenu->addAction("Разорвать связь с НУ");
     QAction *manualControl = traktMenu->addAction("Ручное управление");
-    QAction *param = traktMenu->addAction("Параметры");
+    //QAction *param = traktMenu->addAction("Параметры");
     QAction *track = traktMenu->addAction("Трасса");
     track->setCheckable(true);
     track->setChecked(false);
     dirRunner->trackMode.store(0);
-    QAction *sendAnswer = traktMenu->addAction("Послать ответ");
-    QAction *printCompCoed = traktMenu->addAction("Распечатать компьютерный коэффициент");
+    //QAction *sendAnswer = traktMenu->addAction("Послать ответ");
+    //QAction *printCompCoed = traktMenu->addAction("Распечатать компьютерный коэффициент");
 
     QAction *paramAPPCP = paramMenu->addAction("Параметры АППЦП");
     QAction *paramRR = paramMenu->addAction("РР параметры");
@@ -288,9 +288,10 @@ MainWindow::MainWindow(QWidget *parent)
     QAction *directList = directMenu->addAction("Список директив");
 
     QAction *referense = helpMenu->addAction("Справка по ПРИС");
-    QAction *directReferense = helpMenu->addAction("Справка по директиве");
-    directReferense->setEnabled(false);
-    QAction *searchSection = helpMenu->addAction("Поиск раздела");
+    referense->setShortcut(QKeySequence(Qt::Key_F1));
+    //QAction *directReferense = helpMenu->addAction("Справка по директиве");
+    //directReferense->setEnabled(false);
+    //QAction *searchSection = helpMenu->addAction("Поиск раздела");
 
     menuBar()->addMenu(fileMenu);
     menuBar()->addMenu(correctionMenu);
@@ -342,8 +343,8 @@ MainWindow::MainWindow(QWidget *parent)
     QAction *PFKS = toolBar->addAction("ПФКС");
     QAction *srostM = toolBar->addAction("Срост_М");
     QAction *setManualMode = toolBar->addAction("Режим ручного управления");
-    QAction *msWordOpen = toolBar->addAction("MS WORD");
-    msWordOpen->setEnabled(false);
+    //QAction *msWordOpen = toolBar->addAction("MS WORD");
+    //msWordOpen->setEnabled(false);
 
     this->addToolBar(toolBar);
 
@@ -783,6 +784,7 @@ MainWindow::MainWindow(QWidget *parent)
     QObject::connect(directList, &QAction::triggered, [this, commandLine](){
         static QWidget *directInfoWgt;
         if (!directInfoWgt){
+            qDebug() << "DirectInfoWgt";
             directInfoWgt = new QWidget();
 
             QSqlQueryModel *model = new QSqlQueryModel(directInfoWgt);
@@ -899,6 +901,25 @@ MainWindow::MainWindow(QWidget *parent)
                 tableView->scrollTo(index);
             });
             //db.close();
+
+            QAction *sendDirAct = new QAction(directInfoWgt);               // или directInfoWgt
+            sendDirAct->setShortcut(QKeySequence(/*Qt::CTRL | */Qt::Key_F1));
+            sendDirAct->setShortcutContext(Qt::WidgetWithChildrenShortcut); // важно!
+            directInfoWgt->addAction(sendDirAct);
+
+            QObject::connect(sendDirAct, &QAction::triggered, this, [this, tableView, model]() {
+                qDebug() << "sendDirAct";
+                int row = tableView->currentIndex().row();
+                if (row < 0 || row >= model->rowCount())
+                    return;
+
+                // колонка 1 у вас: NameDir AS директива
+                QString dir = model->data(model->index(row, 1)).toString();
+                if (dir.isEmpty())
+                    return;
+
+                emit this->showHelpForDirect(dir);
+            });
         }
 
         directInfoWgt->raise();
@@ -1418,7 +1439,14 @@ MainWindow::MainWindow(QWidget *parent)
             curFullProtWgt->setWindowTitle("Текущий протокол");
             curFullProtText->setReadOnly(true);
             needUpdate->setChecked(true);
-            curFullProtText->setText(ProtManager::instance().getAllFileDate());
+            QString errorProtOpen;
+            curFullProtText->setText(ProtManager::instance().getAllFileDate(errorProtOpen));
+            if (!errorProtOpen.isEmpty()) {
+                QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProtOpen, QMessageBox::Ok);
+                msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+                msgBox->exec();
+                QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+            }
             QTimer::singleShot(50, curFullProtWgt, [](){
                curFullProtText->verticalScrollBar()->setValue(curFullProtText->verticalScrollBar()->maximum());
             });
@@ -1430,7 +1458,14 @@ MainWindow::MainWindow(QWidget *parent)
 
             QObject::connect(&ProtManager::instance(), &ProtManager::fileUpdate, curFullProtWgt, [](){
                     if (needUpdate->isChecked()){
-                        QString newProtInfo = ProtManager::instance().getNewFileDate();
+                        QString errorProt;
+                        QString newProtInfo = ProtManager::instance().getNewFileDate(errorProt);
+                        if (!errorProt.isEmpty()) {
+                            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
+                            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+                            msgBox->exec();
+                            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                        }
                         if (!newProtInfo.isEmpty()){
                             qDebug() << curFullProtText->verticalScrollBar()->value();
                             qDebug() << curFullProtText->verticalScrollBar()->maximum();
@@ -1448,7 +1483,14 @@ MainWindow::MainWindow(QWidget *parent)
             QObject::connect(&ProtManager::instance(), &ProtManager::fileSaved, curFullProtWgt, [](){
                 if (needUpdate->isChecked()){
                     QTimer::singleShot(500, curFullProtWgt, [](){
-                       curFullProtText->setText(ProtManager::instance().getAllFileDate());;
+                        QString errorProt;
+                        curFullProtText->setText(ProtManager::instance().getAllFileDate(errorProt));
+                        if (!errorProt.isEmpty()) {
+                            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
+                            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+                            msgBox->exec();
+                            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                        }
                     });
                     //QMetaObject::invokeMethod(curFullProtText, "setText", Qt::BlockingQueuedConnection, Q_ARG(QString, ""));
                 } else{
@@ -1459,12 +1501,26 @@ MainWindow::MainWindow(QWidget *parent)
             QObject::connect(needUpdate, &QCheckBox::toggled, [](bool isChecked){
                if (isChecked && hasNotVisbleSavedFile){
                    //QMetaObject::invokeMethod(curFullProtText, "setText", Qt::BlockingQueuedConnection, Q_ARG(QString, ProtManager::instance().getAllFileDate()));
-                   curFullProtText->setText(ProtManager::instance().getAllFileDate());
+                   QString errorProt;
+                   curFullProtText->setText(ProtManager::instance().getAllFileDate(errorProt));
+                   if (!errorProt.isEmpty()) {
+                       QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
+                       msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+                       msgBox->exec();
+                       QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                   }
                    hasNotVisbleSavedFile = false;
                    hasNotVisibleUpdate = false;
                }
                if (isChecked && hasNotVisibleUpdate){
-                   QString newProtInfo = ProtManager::instance().getNewFileDate();
+                   QString errorProt;
+                   QString newProtInfo = ProtManager::instance().getNewFileDate(errorProt);
+                   if (!errorProt.isEmpty()) {
+                       QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
+                       msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+                       msgBox->exec();
+                       QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                   }
                    if (!newProtInfo.isEmpty()) curFullProtText->append(newProtInfo);
                    hasNotVisibleUpdate = false;
                }
@@ -1762,6 +1818,88 @@ MainWindow::MainWindow(QWidget *parent)
             msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
             msgBox->exec();
         } else{
+            QObject::connect(this, &MainWindow::showHelpForDirect, this, [this, helpEngine](const QString direct){
+                static QSplitter *splitter;
+                static bool init{false};
+                static HelpBrowser *textBrowser;
+                if (!init){
+                    QHelpContentWidget *contentWidget = helpEngine->contentWidget();
+
+                    // Виджет индекса (поиск по ключевым словам)
+                    QHelpIndexWidget *indexWidget = helpEngine->indexWidget();
+
+                    // Браузер для отображения страниц справки
+                    // Браузер для отображения страниц справки
+                    textBrowser = new HelpBrowser(helpEngine);
+
+                    // Используем лямбду, чтобы сигналы и слоты совпадали
+                    QObject::connect(contentWidget, &QHelpContentWidget::linkActivated,
+                                     [=](const QUrl &url){
+                                        qDebug() << "1: " <<url;
+                                         QByteArray html = helpEngine->fileData(url);
+                                         textBrowser->setSource(url);
+                                     });
+
+                    QObject::connect(indexWidget, &QHelpIndexWidget::linkActivated,
+                                     [=](const QUrl &url){
+                                         qDebug() << "1: " <<url;
+                                         QByteArray html = helpEngine->fileData(url);
+                                         textBrowser->setSource(url);
+                                     });
+
+                    QObject::connect(textBrowser, &QTextBrowser::anchorClicked, [=](const QUrl& url){
+                        qDebug() << "2: " << url;
+                        QByteArray html = helpEngine->fileData(url);
+                        textBrowser->setHtml(QString::fromUtf8(html));
+                    });
+
+                    // Разделитель для панели содержания и текста
+                    splitter = new QSplitter();
+                    splitter->addWidget(contentWidget);
+                    splitter->addWidget(textBrowser);
+                    splitter->setStretchFactor(1, 1);
+                    init = true;
+                }
+                QMap<QString, QString> mapDirects = {
+                    {"А_КОНТР", "a_kontr"},
+                    {"ВАРИАНТК", "variantk"},
+                    {"ВЫБОР", "vybor"},
+                    {"ВЫБОР100", "vybor100"},
+                    {"ВЫЗВАТЬ", "vysvat"},
+                    {"ВЫХОД", "vyhod"},
+                    {"ВЫЧИСЛ", "vychisl"},
+                    {"ДИРЕКТ", "direct"},
+                    {"ЕСЛИДА", "eslida"},
+                    {"ЗАПРОС", "zapros"},
+                    {"КОММЕНТАРИЙ", "comment"},
+                    {"КПРОГРАМ", "kprogram"},
+                    {"НА", "na"},
+                    {"ПОВТОР", "povtor"},
+                    {"ПОДК_1М", "podk_1m"},
+                    {"ПОДКСОЕД", "podksoed"},
+                    {"ПРОВЕРКА", "proverka"},
+                    {"ПРОГРАМ", "program"},
+                    {"ПРЦ", "prc"},
+                    {"ПСИ", "psi"},
+                    {"ПСЦ", "psc"},
+                    {"ПСЦ_Р", "psc_r"},
+                    {"ПУСК", "pusk"},
+                    {"РВЫХОД", "rvyhod"},
+                    {"РР_ПАР", "rrpar"},
+                    {"СООБЩ", "soobsch"},
+                    {"СП", "sp"},
+                    {"СТОП", "stop"},
+                    {"УВ", "uv"}
+                };
+
+                QString start_url = "qthelp://com.rkk_energia.pris_appcp/doc/docs/directive/" + mapDirects.value(direct) + ".html";
+                QByteArray html = helpEngine->fileData(start_url);
+                textBrowser->setHtml(QString::fromUtf8(html));
+
+                splitter->resize(800, 600);
+                splitter->setWindowTitle("APPCP HELP");
+                splitter->show();
+            });
             QObject::connect(referense, &QAction::triggered, this, [this, helpEngine](){
                 static QSplitter *splitter;
                 static bool init{false};
@@ -1778,17 +1916,20 @@ MainWindow::MainWindow(QWidget *parent)
                     // Используем лямбду, чтобы сигналы и слоты совпадали
                     QObject::connect(contentWidget, &QHelpContentWidget::linkActivated,
                                      [=](const QUrl &url){
+                                        qDebug() << "1: " <<url;
                                          QByteArray html = helpEngine->fileData(url);
                                          textBrowser->setSource(url);
                                      });
 
                     QObject::connect(indexWidget, &QHelpIndexWidget::linkActivated,
                                      [=](const QUrl &url){
+                                         qDebug() << "1: " <<url;
                                          QByteArray html = helpEngine->fileData(url);
                                          textBrowser->setSource(url);
                                      });
 
                     QObject::connect(textBrowser, &QTextBrowser::anchorClicked, [=](const QUrl& url){
+                        qDebug() << "2: " << url;
                         QByteArray html = helpEngine->fileData(url);
                         textBrowser->setHtml(QString::fromUtf8(html));
                     });

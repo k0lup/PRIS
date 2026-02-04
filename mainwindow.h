@@ -82,6 +82,8 @@ signals:
 
     void sendTimeWorkAppcp(const QStringList& timeWorkAppcp);
     void sendExitEventToNU();
+
+    void showHelpForDirect(const QString direct);
 protected:
     void closeEvent(QCloseEvent *event) override;
 private:

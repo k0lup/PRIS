@@ -4200,6 +4200,12 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             diap.append(diapVal);
 
             if (diapVal == 0){
+                if (this->v100Mode) {
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd < 1КОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
                 cBA.append(char(0x09));
                 QThread::sleep(zdr);
                 sendMessageToNU(cBA.constData(), cBA.length(), &status);
@@ -4651,6 +4657,12 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
 
             if (diap == 0){
+                if (this->v100Mode) {
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd < 1КОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
                 c[0] = char(0x09);
                 QThread::sleep(zdr);
                 sendMessageToNU(c, 1, &status);
