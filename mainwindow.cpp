@@ -5,6 +5,7 @@
 #include <QtSql>
 #include <QtConcurrent>
 #include <QThread>
+#include <QTimer>
 #include "dialogwgt.h"
 #include "protmanager.h"
 #include "textsearcher.h"
@@ -33,6 +34,8 @@ QMap<QString, contactAppcp> appcpParam = QMap<QString, contactAppcp>();
 
 const static QString TIME_CONTROL_MEMORY = "TimerControlAppcp284v2";
 const static QString LOCAL_SERVER_TIME_CONTROL = "TimeControlAppcp284Server";
+
+const static int DEFAULT_DELAY_CHECK_VALID_PROT = 60000;
 
 /*QString MainWindow::getCurCatalog(){
     return curCatalog;
@@ -1441,6 +1444,7 @@ MainWindow::MainWindow(QWidget *parent)
             needUpdate->setChecked(true);
             QString errorProtOpen;
             curFullProtText->setText(ProtManager::instance().getAllFileDate(errorProtOpen));
+            qDebug() << "OPEN CUR PROT: " << errorProtOpen;
             if (!errorProtOpen.isEmpty()) {
                 QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProtOpen, QMessageBox::Ok);
                 msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
@@ -1948,6 +1952,39 @@ MainWindow::MainWindow(QWidget *parent)
             });
         }
     }
+
+    QObject::connect(dirRunner, &directRunner::errorProtValid, this, [this](QString errorProtOpen) {
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProtOpen, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
+        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+    });
+
+    timerForCheckValidProt = new QTimer(this);
+    QObject::connect(timerForCheckValidProt, &QTimer::timeout, this, []() {
+        qDebug() << "check timer valid prot";
+        QString errorProt;
+        ProtManager::instance().isValidProt(errorProt);
+        if (!errorProt.isEmpty()) {
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
+            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        }
+    });
+    int delay_check_valid_prot{0};
+    if (paramValues.contains("ТАЙМЕР_ПРОВЕРКИ_ПРОТОКОЛА")) {
+        bool ok;
+        delay_check_valid_prot = paramValues.value("ТАЙМЕР_ПРОВЕРКИ_ПРОТОКОЛА").toInt(&ok);
+        delay_check_valid_prot *= 1000;
+        if (!ok) {
+            delay_check_valid_prot = DEFAULT_DELAY_CHECK_VALID_PROT;
+        }
+    } else {
+        delay_check_valid_prot = DEFAULT_DELAY_CHECK_VALID_PROT;
+    }
+
+    timerForCheckValidProt->start(delay_check_valid_prot);
 
     QString TimeControlPath;
     if (paramValues.contains("КОНТР_ВРЕМЕНИ")){

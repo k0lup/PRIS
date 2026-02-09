@@ -106,6 +106,8 @@ signals:
     void haveTimeWorkAppcp();
 
     void voltAnswer();
+
+    void errorProtValid(const QString errorProt);
 public slots:
     void setVarinatkVar(const QString& var, bool stopProg);
 

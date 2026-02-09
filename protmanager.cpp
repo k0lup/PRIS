@@ -12,7 +12,7 @@ ProtManager::ProtManager(QObject *parent) : QObject(parent), activeProt(false), 
 
 }
 
-bool ProtManager::createProtocol(){
+bool ProtManager::createProtocol(QString& errorText){
     qDebug() << "createProtocol";
     QString tempDir = /*QStandardPaths::writableLocation(QStandardPaths::TempLocation);*/ MainWindow::getOnParam("ПРОТОКОЛ");
     QString filePath = QDir(tempDir).filePath("prot.PCP");
@@ -109,6 +109,10 @@ bool ProtManager::createProtocol(){
                 return false;
             }
         }
+        if (!this->isValidProt(errorText)) {
+            qDebug() << "errorText create: " << errorText;
+            return false;
+        }
     }
     activeProt = true;
     return true;
@@ -150,7 +154,7 @@ bool ProtManager::writeRecord(QString param, const int atomType, int potok){
     return true;
 }
 
-bool ProtManager::saveFile(const QString& savePath, const QString& saveNUPath){
+bool ProtManager::saveFile(const QString& savePath, const QString& saveNUPath, QString& error){
     if (!writeFile.isOpen() || !nuFile.isOpen()){
         return false;
     }
@@ -166,7 +170,7 @@ bool ProtManager::saveFile(const QString& savePath, const QString& saveNUPath){
     writeFile.setFileName("");
     readFile.setFileName("");
     nuFile.setFileName("");
-    res &= createProtocol();
+    res &= createProtocol(error);
     emit fileSaved();
     return res;
 }
@@ -351,7 +355,7 @@ QString ProtManager::getAllFileDate(QString& errorText){
 
             protInfo.append(message);
         } else{
-            qDebug() << "Критическая ошибка в структуре протокола";
+            errorText = "Критическая ошибка в структуре протокола";
             return QString();
         }
 
@@ -771,7 +775,7 @@ bool ProtManager::isValidProt(QString &errorText) {
 
             protInfo.append(message);
         } else{
-            qDebug() << "Критическая ошибка в структуре протокола";
+            errorText = "Критическая ошибка в структуре протокола";
             return false;
         }
 

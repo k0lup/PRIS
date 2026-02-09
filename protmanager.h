@@ -12,11 +12,11 @@ public:
         static ProtManager manager;
         return manager;
     }
-    bool createProtocol();
+    bool createProtocol(QString& error);
     bool writeRecord(QString param, const int atomType, int potok = 0);
     bool writeRecordToNU(QString record);
 
-    bool saveFile(const QString& savePath, const QString& saveNUPath);
+    bool saveFile(const QString& savePath, const QString& saveNUPath, QString& error);
     bool isProtActive(){return activeProt;}
     QString getAllFileDate(QString& errorText);
     bool isValidProt(QString& errorText);

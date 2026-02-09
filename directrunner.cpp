@@ -1002,7 +1002,16 @@ directRunner::directRunner(QObject *parent) : QObject(parent)
     ost_flag.store(0);
     m_ost_flag.store(0);
     v100Mode = false;
-    ProtManager::instance().createProtocol();
+    QString errorProtText;
+    ProtManager::instance().createProtocol(errorProtText);
+    if (!errorProtText.isEmpty()) {
+        qDebug() << "ERROR OPEN PROT: " << errorProtText;
+        //emit this->errorProtValid(errorProtText);
+        QTimer::singleShot(0, this, [this, errorProtText]() {
+            emit this->errorProtValid(errorProtText);
+        });
+    }
+    qDebug() << "DONE OPEN PROT: " << errorProtText;
 
     //directNumPotok.reserve(static_cast<int>(DirectParser::TypeDirect::NO_DIRECT));    //резервируем место под наше кол-во директив (NO_DIRECT является последним членом перечисления директив и при этом не является директивой, поэтому его порядковый номер может быть использован как количество директив)
 
@@ -5403,7 +5412,8 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                                            "\t\t\tЗа текущий день: %1\n"
                                            "\t\t\tЗа текущий месяц: %2\n").arg(timeWork[0]).arg(timeWork[1]), "0", directRunner::textStyle());
         }
-        if (!ProtManager::instance().saveFile(fullSaveFilePath, fullNUSaveFilePath)){
+        QString errorProt;
+        if (!ProtManager::instance().saveFile(fullSaveFilePath, fullNUSaveFilePath, errorProt)){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             if (dir.numDirect > -1){
                 errorMessage.append("\t#" + numDirect + "\t\t");
@@ -5413,6 +5423,9 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 printInProt(errorMessage, "13", textStyle());
             }
             return false;
+        }
+        if (!errorProt.isEmpty()) {
+            emit this->errorProtValid(errorProt);
         }
         printStartMessage();
         QString tempPrintMessage = printMessage;

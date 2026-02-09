@@ -9,6 +9,7 @@
 #include <QtSql>
 #include <QLocalSocket>
 #include <QThread>
+#include <QTimer>
 #include "stepwgt.h"
 
 struct contactAppcp{
@@ -114,5 +115,7 @@ private:
 
     bool programDirectWindowClose;
     QThread *dirRunnerThread;
+
+    QTimer *timerForCheckValidProt;
 };
 #endif // MAINWINDOW_H
