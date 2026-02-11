@@ -164,7 +164,7 @@ void directRunner::startWork(){
         });
 
         QObject::connect(jsonReceiver, &JsonReceiver::errorGet, [this](QString message){
-            printInProt(QString("\t\t\tОшибка получения данных по порту %1: ").arg(portAppcpOnlyRead, 8, 16, QChar('0')) + message, "13", textStyle());
+            printInProt(QString("\t\t\t%1\tОшибка получения данных по порту %2: ").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(portAppcpOnlyRead, 8, 16, QChar('0')) + message, "13", textStyle());
         });
 
         QObject::connect(jsonReceiver, &JsonReceiver::bytesGet, [this](QByteArray bytes){
@@ -239,20 +239,20 @@ void directRunner::startWork(){
     }
     QObject::connect(socketCanal1, &QTcpSocket::connected, [this](){
         if (socketCanal2->state() == QAbstractSocket::ConnectedState) this->hasConnectNU.store(1);
-        printInProt(QString("Связь установлена с НУ по каналу 1"), "23", textStyle());
+        printInProt(QString("%1\tСвязь установлена с НУ по каналу 1").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "23", textStyle());
     });
     QObject::connect(socketCanal2, &QTcpSocket::connected, [this](){
         if (socketCanal1->state() == QAbstractSocket::ConnectedState) this->hasConnectNU.store(1);
-       printInProt(QString("Связь установлена с НУ по каналу 2"), "23", textStyle());
+       printInProt(QString("%1\tСвязь установлена с НУ по каналу 2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "23", textStyle());
     });
 
     QObject::connect(socketCanal1, &QTcpSocket::disconnected, [this](){
         this->hasConnectNU.store(0);
-       printInProt(QString("Связь с НУ по каналу 1 разорвана"), "13", textStyle());
+       printInProt(QString("%1\tСвязь с НУ по каналу 1 разорвана").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
     });
     QObject::connect(socketCanal2, &QTcpSocket::disconnected, [this](){
         this->hasConnectNU.store(0);
-       printInProt(QString("Связь с НУ по каналу 2 разорвана"), "13", textStyle());
+       printInProt(QString("%1\tСвязь с НУ по каналу 2 разорвана").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
     });
 
     connectNU();
@@ -624,16 +624,16 @@ void directRunner::sendMessageToNU(const char *data, int len, bool *status){
         //if (!can1RR && !can2RR) canInfo = "по 1 и 2 каналу";
         /*else*/ if (!can1RR) canInfo = "по 1 каналу";
         //else canInfo = "по 2 каналу";
-        printInProt(QString("Превышен лимит ожидания ответа от НУ %1").arg(canInfo), "13", textStyle());
+        printInProt(QString("%1\tПревышен лимит ожидания ответа от НУ %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(canInfo), "13", textStyle());
         return;
     }
     waitNUMessage.store(0);
     if (this->respondNU.length() < 2 || this->respondNU.at(0) != data[0]){
-        printInProt("Ответ от НУ получен на другую директиву", "13", textStyle());
+        printInProt(QString("%1\tОтвет от НУ получен на другую директиву").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
         return;
     }
     if (this->respondNU[1] != char(0x00) && this->respondNU[1] != char(0xFF)){
-        printInProt("Ошибка в коде заверешения операции в НУ (допустимые коды завершения: 0x00 и 0xFF)", "13", textStyle());
+        printInProt(QString("%1\tОшибка в коде заверешения операции в НУ (допустимые коды завершения: 0x00 и 0xFF)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
         return;
     }
 
@@ -833,7 +833,7 @@ void directRunner::runProgram(/*QTextEdit *protocol, QWidget *protocolWgt, QStan
         if (programs.last().numDir == 0 && programs.last().directList[0]->direct != DirectParser::TypeDirect::PROGRAM){
             QString errorMessage;
             errorMessage = "\t#";
-            errorMessage.append("\t");
+            errorMessage.append(QString("\t%1").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")));
             errorMessage.append("\t");
             errorMessage.append("ОТСУТСВТУЕТ ДИРЕКТИВА ПРОГРАММ ИЛИ СООБЩЕНИЕ В НЕЙ");
             //protocol->append(errorMessage);
@@ -889,6 +889,7 @@ void directRunner::runProgram(/*QTextEdit *protocol, QWidget *protocolWgt, QStan
             QString errorMessage;
             errorMessage = "\t#";
             errorMessage.append("\t");
+            errorMessage.append(QDateTime::currentDateTime().toString("HH:mm:ss.zzz"));
             errorMessage.append("\t");
             errorMessage.append("КОНЕЦ ФАЙЛА, НЕТ КПРОГРАММ");
             //protocol->append(errorMessage);
@@ -1004,14 +1005,21 @@ directRunner::directRunner(QObject *parent) : QObject(parent)
     v100Mode = false;
     QString errorProtText;
     ProtManager::instance().createProtocol(errorProtText);
-    if (!errorProtText.isEmpty()) {
+    /*if (!errorProtText.isEmpty()) {
         qDebug() << "ERROR OPEN PROT: " << errorProtText;
         //emit this->errorProtValid(errorProtText);
         QTimer::singleShot(0, this, [this, errorProtText]() {
             emit this->errorProtValid(errorProtText);
         });
     }
-    qDebug() << "DONE OPEN PROT: " << errorProtText;
+    qDebug() << "DONE OPEN PROT: " << errorProtText;*/
+
+    if (!errorProtText.isEmpty()) {
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProtText, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
+    }
 
     //directNumPotok.reserve(static_cast<int>(DirectParser::TypeDirect::NO_DIRECT));    //резервируем место под наше кол-во директив (NO_DIRECT является последним членом перечисления директив и при этом не является директивой, поэтому его порядковый номер может быть использован как количество директив)
 
@@ -1028,7 +1036,7 @@ directRunner::directRunner(QObject *parent) : QObject(parent)
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
     }
     else{
         QFile stylesFile(stylesFilePath);
@@ -1038,7 +1046,7 @@ directRunner::directRunner(QObject *parent) : QObject(parent)
             QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
             msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
             msgBox->exec();
-            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+            QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
         }
         else{
             QTextStream in(&stylesFile);
@@ -6534,24 +6542,24 @@ void directRunner::connectNU(){
         } else{
             printInProt(QString("Связь установлена с НУ по каналу 2"), "23", textStyle());
         }*/
-        printInProt(QString("Устанавливаем связь с НУ"), "23", textStyle());
+        printInProt(QString("%1\tУстанавливаем связь с НУ").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "23", textStyle());
         printInProt(QString("**********************************************"), "30", textStyle());
         qDebug() << ipAppcpServ;
         socketCanal1->connectToHost(ipAppcpServ, portAppcpWriteAndRead);
         socketCanal2->connectToHost(ipAppcpServ, portAppcpOnlyRead);
         QTimer::singleShot(3000, this, [this](){
            if (this->socketCanal1->state() != QAbstractSocket::ConnectedState) {
-                printInProt(QString("Ошибка установки связи с НУ по каналу 1"), "13", textStyle());
+                printInProt(QString("%1\tОшибка установки связи с НУ по каналу 1").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
            }
            if (this->socketCanal2->state() != QAbstractSocket::ConnectedState){
-               printInProt(QString("Ошибка установки связи с НУ по каналу 2"), "13", textStyle());
+               printInProt(QString("%2\tОшибка установки связи с НУ по каналу 2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
            }
         });
     } else{
-        printInProt(QString("Связь с НУ уже установлена"), "23", textStyle());
+        printInProt(QString("%1\tСвязь с НУ уже установлена").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "23", textStyle());
     }
 
-    if (MainWindow::getCfgParam("ВН_ПРИБОР") == "ДА") {
+    /*if (MainWindow::getCfgParam("ВН_ПРИБОР") == "ДА") {
         this->hasVoltMode = true;
         if (voltSocket->state() != QAbstractSocket::ConnectedState) {
             this->voltSocket->connectToHost("127.0.0.1", 0x4005);
@@ -6629,7 +6637,7 @@ void directRunner::connectNU(){
         } else {
             printInProt("Связь с вольтметром уже установлена!", "23", textStyle());
         }
-    }
+    }*/
 }
 
 void directRunner::disconnectNU(){
@@ -6642,32 +6650,32 @@ void directRunner::disconnectNU(){
         /*socketCanal2->waitForDisconnected(3000);
         printInProt(QString("Связь с НУ по каналу 2 разорвана"), "13", textStyle());*/
         if (socketCanal1->state() == QAbstractSocket::UnconnectedState && socketCanal2->state() == QAbstractSocket::UnconnectedState){
-            printInProt(QString("Связь с НУ разорвана"), "23", textStyle());
+            printInProt(QString("%1\tСвязь с НУ разорвана").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "23", textStyle());
         } else{
         QTimer::singleShot(3000, this, [this](){
                 bool status{true};
                if (this->socketCanal1->state() != QAbstractSocket::UnconnectedState){
-                   printInProt(QString("Ошибка разрыва связи с НУ по каналу 1"), "13", textStyle());
+                   printInProt(QString("%1\tОшибка разрыва связи с НУ по каналу 1").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
                    status = false;
                }
                if (this->socketCanal2->state() != QAbstractSocket::UnconnectedState){
-                   printInProt(QString("Ошибка разрыва связи с НУ по каналу 2"), "13", textStyle());
+                   printInProt(QString("%1\tОшибка разрыва связи с НУ по каналу 2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
                    status = false;
                }
                if (status){
-                   printInProt(QString("Связь с НУ разорвана"), "23", textStyle());
+                   printInProt(QString("%1\tСвязь с НУ разорвана").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "23", textStyle());
                }
             });
         }
     } else{
-        printInProt(QString("Связь с НУ не была установлена"), "23", textStyle());
+        printInProt(QString("%1\tСвязь с НУ не была установлена").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "23", textStyle());
     }
 }
 
 //отправлять errorMessage в ManualModeWindow
 bool directRunner::runCommandNU(const unsigned char command, int contact, bool setConnect){
-    QString printMessage = "РУ:\t\t--> ";
-    QString errorMessage = "РУ:\t\t=-> # ";
+    QString printMessage = QString("%1\tРУ:\t\t--> ").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz"));
+    QString errorMessage = QString("%1\tРУ:\t\t=-> # ").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz"));
     if (socketCanal1->state() != QAbstractSocket::ConnectedState || socketCanal2->state() != QAbstractSocket::ConnectedState){
         errorMessage.append("Нет соединения с НУ");
         printInProt(errorMessage, "13", textStyle());
@@ -6890,11 +6898,11 @@ bool directRunner::runCommandNU(const unsigned char command, int contact, bool s
 
 bool directRunner::runDirect(const DirectParser::Direct &direct){
     if (hasRunManualMode.load() == 1){
-        printInProt("Выполнение директивы недопустимо при открытом окне ручного режима!", "13", textStyle());
+        printInProt(QString("%1\tВыполнение директивы недопустимо при открытом окне ручного режима!").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
         return false;
     }
     if (hasRunDirective.load() == 1) {
-        printInProt("Выполнение директивы недопустимо пока не заврешится предыдущая директика", "13", textStyle());
+        printInProt(QString("%1\tВыполнение директивы недопустимо пока не заврешится предыдущая директика").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
         return false;
     }
     hasRunDirective.store(1);
@@ -6906,12 +6914,12 @@ bool directRunner::runDirect(const DirectParser::Direct &direct){
 
 void directRunner::setManualMode(){
     hasRunManualMode.store(1);
-    printInProt("Включили ручной режим", "0", textStyle());
+    printInProt(QString("%1\tВключили ручной режим").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "0", textStyle());
 }
 
 void directRunner::unSetManualMode(){
     hasRunManualMode.store(0);
-    printInProt("Отключили ручной режим", "0", textStyle());
+    printInProt(QString("%1\tОтключили ручной режим").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "0", textStyle());
 }
 
 

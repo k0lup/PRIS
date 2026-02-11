@@ -76,7 +76,7 @@ MainWindow::MainWindow(QWidget *parent)
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
         statusOpenned = false;
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
         return;
     }
     error_read_config.clear();
@@ -86,7 +86,7 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
         statusOpenned = false;
         return;
     }
@@ -330,7 +330,7 @@ MainWindow::MainWindow(QWidget *parent)
         rExitProgramAction->setShortcut(QKeySequence("CTRL+5"));
         this->addAction(rExitProgramAction);
         QAction *repeatAction = programActionMenu->addAction("Повтор");
-        repeatAction->setShortcut(QKeySequence("CTRL+6"));
+        repeatAction->setShortcut(QKeySequence("CTRL+7"));
         this->addAction(repeatAction);
         repeatAction->setShortcutContext(Qt::ApplicationShortcut);
     QToolButton *programMenuButton = new QToolButton(this);
@@ -628,7 +628,7 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
     }
 
     /*if (!QFile::exists(dbFilePath)){
@@ -649,7 +649,7 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
         qDebug() << "DB_NOT_OPEN";
     }
 
@@ -662,7 +662,7 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
     }
 
 
@@ -674,7 +674,7 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
         qDebug() << "DB_NOT_OPEN";
     }
 
@@ -687,7 +687,7 @@ MainWindow::MainWindow(QWidget *parent)
             QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
             msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
             msgBox->exec();
-            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+            QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
         }
         while (query.next()){
             QString value = query.value(0).toString();
@@ -700,7 +700,7 @@ MainWindow::MainWindow(QWidget *parent)
                 QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
                 msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
                 msgBox->exec();
-                QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
                 return;
             }
             appcpParam.insert(value, contactAppcp(raz, cont));
@@ -1449,7 +1449,7 @@ MainWindow::MainWindow(QWidget *parent)
                 QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProtOpen, QMessageBox::Ok);
                 msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
                 msgBox->exec();
-                QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
             }
             QTimer::singleShot(50, curFullProtWgt, [](){
                curFullProtText->verticalScrollBar()->setValue(curFullProtText->verticalScrollBar()->maximum());
@@ -1468,7 +1468,7 @@ MainWindow::MainWindow(QWidget *parent)
                             QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
                             msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
                             msgBox->exec();
-                            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                            QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
                         }
                         if (!newProtInfo.isEmpty()){
                             qDebug() << curFullProtText->verticalScrollBar()->value();
@@ -1493,7 +1493,7 @@ MainWindow::MainWindow(QWidget *parent)
                             QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
                             msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
                             msgBox->exec();
-                            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                            QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
                         }
                     });
                     //QMetaObject::invokeMethod(curFullProtText, "setText", Qt::BlockingQueuedConnection, Q_ARG(QString, ""));
@@ -1511,7 +1511,7 @@ MainWindow::MainWindow(QWidget *parent)
                        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
                        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
                        msgBox->exec();
-                       QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                       QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
                    }
                    hasNotVisbleSavedFile = false;
                    hasNotVisibleUpdate = false;
@@ -1523,7 +1523,7 @@ MainWindow::MainWindow(QWidget *parent)
                        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
                        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
                        msgBox->exec();
-                       QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+                       QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
                    }
                    if (!newProtInfo.isEmpty()) curFullProtText->append(newProtInfo);
                    hasNotVisibleUpdate = false;
@@ -1957,7 +1957,7 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProtOpen, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
         msgBox->exec();
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
     });
 
     timerForCheckValidProt = new QTimer(this);
@@ -1969,7 +1969,7 @@ MainWindow::MainWindow(QWidget *parent)
             QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorProt, QMessageBox::Ok);
             msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
             msgBox->exec();
-            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+            QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
         }
     });
     int delay_check_valid_prot{0};
