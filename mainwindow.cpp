@@ -651,6 +651,7 @@ MainWindow::MainWindow(QWidget *parent)
         msgBox->exec();
         QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
         qDebug() << "DB_NOT_OPEN";
+        qDebug() << rrParDB.lastError().text();
     }
 
     appcpParDB = QSqlDatabase::addDatabase("QSQLITE", "APPCP PAR");
@@ -676,6 +677,7 @@ MainWindow::MainWindow(QWidget *parent)
         msgBox->exec();
         QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
         qDebug() << "DB_NOT_OPEN";
+        qDebug() << appcpParDB.lastError().text();
     }
 
 
