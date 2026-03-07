@@ -8,6 +8,60 @@
 #include "mainwindow.h"
 #include "constvalues.h"
 #include "rrparam.h"
+
+
+struct FileHeaderInfo
+{
+    QString firstLine;
+    QString checksum;
+    QString encoding;   // "UTF-8" / "CP1251" / ""
+    bool ok = false;
+};
+
+FileHeaderInfo readDipHeader(const QString &fileName)
+{
+    FileHeaderInfo result;
+
+    const QString prefix = QStringLiteral("П!КОНТРОЛЬНАЯ СУММА=");
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "Open error:" << file.errorString();
+        return result;
+    }
+
+    // Читаем первую строку как сырые байты
+    QByteArray rawLine = file.readLine();
+    rawLine = rawLine.trimmed();   // убрать \r\n
+
+    // 1. Пробуем UTF-8
+    QString lineUtf8 = QString::fromUtf8(rawLine);
+    if (lineUtf8.startsWith(prefix) && lineUtf8.endsWith('!')) {
+        result.firstLine = lineUtf8;
+        result.checksum = lineUtf8.mid(prefix.length());
+        result.encoding = QStringLiteral("UTF-8");
+        result.ok = true;
+        return result;
+    }
+
+    // 2. Пробуем CP1251
+    QTextCodec *cp1251 = QTextCodec::codecForName("Windows-1251");
+    if (cp1251) {
+        QString lineCp1251 = cp1251->toUnicode(rawLine);
+        if (lineCp1251.startsWith(prefix) && lineCp1251.endsWith('!')) {
+            result.firstLine = lineCp1251;
+            result.checksum = lineCp1251.mid(prefix.length());
+            result.encoding = QStringLiteral("CP1251");
+            result.ok = true;
+            return result;
+        }
+    }
+
+    // Ничего не подошло
+    qDebug() << "Unknown encoding or invalid header. Raw bytes:" << rawLine;
+    return result;
+}
+
 QStack<directRunner::programStruct> directRunner::programs = QStack<directRunner::programStruct>();
 QString directRunner::metka = "";
 bool directRunner::hasRunProg = false;
@@ -1588,15 +1642,46 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             }
             return false;
         }
+
+        FileHeaderInfo info = readDipHeader(fullFilePath);
+
+        if (!info.ok) {
+            if (dir.numDirect > -1){
+                errorMessage.append("\t#" + numDirect + "\t\t");
+            } else errorMessage.append("\t\t\t");
+            errorMessage.append("НЕ УДАЛОСЬ РАСПОЗНАТЬ КОДИРОВКУ ФАЙЛА!");
+            {
+                printInProt(errorMessage, "13", textStyle());
+            }
+        return false;
+        } else {
+            qDebug() << "Encoding:" << info.encoding;
+            qDebug() << "First line:" << info.firstLine;
+            qDebug() << "Checksum:" << info.checksum;
+        }
+
         QTextStream in(&file);
+        QTextCodec *codec = QTextCodec::codecForName(info.encoding.toUtf8());
+        if (!codec) {
+            if (dir.numDirect > -1){
+                errorMessage.append("\t#" + numDirect + "\t\t");
+            } else errorMessage.append("\t\t\t");
+            errorMessage.append("ОШИБКА ПЕРЕКОДИРОВКИ ФАЙЛА!");
+            {
+                printInProt(errorMessage, "13", textStyle());
+            }
+        }
+        in.setCodec(codec);
         QString KS;
         QStringList programText;
         KS = in.readLine();
+        qDebug() << "KS: " << KS;
         if (KS.startsWith("П!КОНТРОЛЬНАЯ СУММА=")){
             KS = KS.mid(20);
         } else{
             KS = "";
         }
+        qDebug() << "KS: " << KS;
         /*while (!in.atEnd()){
             QString line = in.readLine();
             if (line.startsWith("П!КОНТРОЛЬНАЯ СУММА=")){
