@@ -4642,18 +4642,19 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             else if (nDop <= 5000 && vDop <= 5000) diap = 2;
             else diap = 3;*/
             if (nDop == -1 || (nDop <= 0.05)) diap = 0;
-            else if (nDop <= 1) diap = 4;
-            else if (nDop <= 10) diap = 5;
-            else if (nDop <= 100) diap = 6;
+            else if (nDop <= 0.1) diap = 4;
+            else if (nDop <= 1) diap = 5;
+            else if (nDop <= 10) diap = 6;
+            else if (nDop <= 100) diap = 7;
             else if (nDop <= 1000.0) diap = 1;
             else if (nDop <= 5000.0) diap = 2;
             else diap = 3;
 
             float result{0};
 
-            bool voltReady = false;
+            //bool voltReady = false;
 
-            if (diap >= 4 && diap <=6) voltReady = haveVolt();
+            //if (diap >= 4 && diap <=6) voltReady = haveVolt();
 
 
             printMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" "));
@@ -4779,7 +4780,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     goto end_metka;
                 }
             } else{
-                if (diap >= 4 && !voltReady) {
+                /*if (diap >= 4 && !voltReady) {
                     if (hasVoltMode) printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
                     diap = 1;
                 }
@@ -4792,6 +4793,15 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                             blockAllIsm = true;
                         }
                     }
+                }*/
+                if (diap >= 4 && !hasVoltMode) {
+                    diap = 1;
+                }
+                if (diap >=4) {
+                    printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
+                    /*
+                     * код для вольтметра
+                    */
                 } else {
                 c[0] = char(0x08);
                 c[1] = char(diap);
@@ -6889,6 +6899,7 @@ bool directRunner::runCommandNU(const unsigned char command, int contact, bool s
             emit manualCommandComplete(false);
             return false;
         }
+        qDebug() << "message send";
         QString message = printMessage + "Замер произведен";
         printInProt(message, "30", textStyle());
         emit printMessageToManualWindow(message, "blue");
@@ -6940,6 +6951,7 @@ bool directRunner::runCommandNU(const unsigned char command, int contact, bool s
         emit printMessageToManualWindow(message, "blue");
         message = printMessage + QString("Замер напряжения: %1").arg(QString::number(result, 'f', 6));
         emit printMessageToManualWindow(message, "blue");
+        emit sendResulToManualWindow(result);
     } else if (command == static_cast<char>(NUCommand::PODKL_1M)){
         QByteArray cBA;
         cBA.append(0x22);

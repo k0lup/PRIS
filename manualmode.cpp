@@ -29,6 +29,9 @@ ManualMode::ManualMode(QWidget *parent) : QWidget(parent)
     textEdit->setText("");
 
     resultLabel = new QLabel("Измерения", this);
+    QFont font = resultLabel->font();
+    font.setPointSize(20);
+    resultLabel->setFont(font);
     QHBoxLayout *hBox1 = new QHBoxLayout();
     hBox1->addWidget(textEdit);
     hBox1->addWidget(resultLabel);
@@ -627,7 +630,54 @@ bool ManualMode::checkPlusContConnected(){
 }
 
 void ManualMode::resetConnections(){
-    sendCommand(static_cast<char>(NUCommand::SBR_PODKL));
+    bool res = sendCommand(static_cast<char>(NUCommand::SBR_PODKL));
+    if (!res) {
+        resultLabel->setText("НЕ УДАЛОСЬ ВЫПОЛНИТЬ СБР_ПОДКЛ. ВСЕ ДЕЙСТВИЯ, КРОМЕ СБР_ПОДКЛ ЗАПРЕЩЕНЫ!");
+        for (auto &btn: minX1btnVector){
+            btn->setEnabled(false);
+        }
+        for (auto &btn : minX2btnVector){
+            btn->setEnabled(false);
+        }
+        for (auto &btn : plX1btnVector){
+            btn->setEnabled(false);
+        }
+        for (auto &btn : plX2btnVector){
+            btn->setEnabled(false);
+        }
+        minGr->setEnabled(false);
+        plGr->setEnabled(false);
+        r50->setEnabled(false);
+        r1->setEnabled(false);
+        r5->setEnabled(false);
+        r20->setEnabled(false);
+        u->setEnabled(false);
+        v100->setEnabled(false);
+        conn->setEnabled(false);;
+        return;
+    } else {
+        for (auto &btn: minX1btnVector){
+            btn->setEnabled(true);
+        }
+        for (auto &btn : minX2btnVector){
+            btn->setEnabled(true);
+        }
+        for (auto &btn : plX1btnVector){
+            btn->setEnabled(true);
+        }
+        for (auto &btn : plX2btnVector){
+            btn->setEnabled(true);
+        }
+        minGr->setEnabled(true);
+        plGr->setEnabled(true);
+        r50->setEnabled(true);
+        r1->setEnabled(true);
+        r5->setEnabled(true);
+        r20->setEnabled(true);
+        u->setEnabled(true);
+        v100->setEnabled(true);
+        conn->setEnabled(true);;
+    }
     for (auto &btn: minX1btnVector){
         btn->setChecked(false);
         btn->setStyleSheet(defaultBtnStyle);

@@ -22,14 +22,24 @@
 static QPalette makeLightPalette()
 {
     QPalette p;
+
+    // Active / Normal
     p.setColor(QPalette::Window, Qt::white);
     p.setColor(QPalette::WindowText, Qt::black);
     p.setColor(QPalette::Base, Qt::white);
     p.setColor(QPalette::Text, Qt::black);
-    p.setColor(QPalette::Button, QColor(240,240,240));
+    p.setColor(QPalette::Button, QColor(240, 240, 240));
     p.setColor(QPalette::ButtonText, Qt::black);
-    p.setColor(QPalette::Highlight, QColor(0,120,215));
+    p.setColor(QPalette::Highlight, QColor(0, 120, 215));
     p.setColor(QPalette::HighlightedText, Qt::white);
+
+    // Disabled
+    p.setColor(QPalette::Disabled, QPalette::WindowText, QColor(160, 160, 160));
+    p.setColor(QPalette::Disabled, QPalette::Text, QColor(160, 160, 160));
+    p.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(150, 150, 150));
+    p.setColor(QPalette::Disabled, QPalette::Button, QColor(225, 225, 225));
+    p.setColor(QPalette::Disabled, QPalette::Base, QColor(245, 245, 245));
+
     return p;
 }
 
