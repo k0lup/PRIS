@@ -34,6 +34,7 @@ QMap<QString, contactAppcp> appcpParam = QMap<QString, contactAppcp>();
 
 const static QString TIME_CONTROL_MEMORY = "TimerControlAppcp284v2";
 const static QString LOCAL_SERVER_TIME_CONTROL = "TimeControlAppcp284Server";
+const static QString TITLE_STRING = "ППИ АППЦП-Р: вер.01.00 ПРОТОКОЛ: ";
 
 const static int DEFAULT_DELAY_CHECK_VALID_PROT = 60000;
 
@@ -43,7 +44,7 @@ const static int DEFAULT_DELAY_CHECK_VALID_PROT = 60000;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    this->setWindowTitle("АППЦП: вер.01.00 ПРОТОКОЛ: C:\\APPCP\\prot.pcp");
+    //this->setWindowTitle(TITLE_STRING);
     dirRunnerThread = nullptr;
     //blockDirectRun.store(0);
     QDir dir(QDir::homePath());
@@ -186,6 +187,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     //dirRunner = &directRunner::instance();
     dirRunner = new directRunner();
+    this->setWindowTitle(TITLE_STRING + ProtManager::instance().getCurProtFilePath());
 
     QObject::connect(dirRunner, &directRunner::showVarDialogWindow, this, &MainWindow::showVariantDialogWindow, Qt::QueuedConnection);
     QObject::connect(this, &MainWindow::variantSelected, dirRunner, &directRunner::setVarinatkVar);
@@ -209,6 +211,7 @@ MainWindow::MainWindow(QWidget *parent)
     QObject::connect(dirRunner, &directRunner::unsetStopState, this, &MainWindow::closeInfoStopWindow, Qt::QueuedConnection);
 
     stepWgt = new StepWgt();
+    stepWgt->setWindowTitle("Окно шагового режима ППИ");
     stepWgt->hide();
 
     programDirectWindowClose = false;
@@ -285,7 +288,7 @@ MainWindow::MainWindow(QWidget *parent)
     //QAction *sendAnswer = traktMenu->addAction("Послать ответ");
     //QAction *printCompCoed = traktMenu->addAction("Распечатать компьютерный коэффициент");
 
-    QAction *paramAPPCP = paramMenu->addAction("Параметры АППЦП");
+    QAction *paramAPPCP = paramMenu->addAction("Параметры АППЦП-Р");
     QAction *paramRR = paramMenu->addAction("РР параметры");
 
     QAction *directList = directMenu->addAction("Список директив");
@@ -598,6 +601,7 @@ MainWindow::MainWindow(QWidget *parent)
        static QWidget *numWgt;
        if (!numWgt){
            numWgt = new QWidget();
+           numWgt->setWindowTitle("Окно ввода номера изделия");
 
            QLineEdit *lineEdit = new QLineEdit(numWgt);
            lineEdit->setText(this->numProduct);
@@ -791,6 +795,7 @@ MainWindow::MainWindow(QWidget *parent)
         if (!directInfoWgt){
             qDebug() << "DirectInfoWgt";
             directInfoWgt = new QWidget();
+            directInfoWgt->setWindowTitle("Директивы");
 
             QSqlQueryModel *model = new QSqlQueryModel(directInfoWgt);
             model->setQuery("SELECT NumDir AS N, NameDir AS директива, FullNameDir AS назначение_директивы, Potok AS поток, KO as КО, TF AS ТФ, KF AS КФ FROM Dirs", this->appcpParDB);
@@ -940,7 +945,7 @@ MainWindow::MainWindow(QWidget *parent)
        static QWidget *paramAPPCPInfo;
        if (!paramAPPCPInfo){
            paramAPPCPInfo = new QWidget();
-           paramAPPCPInfo->setWindowTitle("Параметры АППЦП");
+           paramAPPCPInfo->setWindowTitle("Параметры АППЦП-Р");
            //QSqlDatabase db;
            //QString dbFilePath = this->paramValues.value("БАЗА_ДАННЫХ");
            //if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "MDB" && QFileInfo(dbFilePath).suffix().toUpper() != "ACCDB")) return;
@@ -1903,7 +1908,7 @@ MainWindow::MainWindow(QWidget *parent)
                 textBrowser->setHtml(QString::fromUtf8(html));
 
                 splitter->resize(800, 600);
-                splitter->setWindowTitle("APPCP HELP");
+                splitter->setWindowTitle("Справка ППИ АППЦП-Р");
                 splitter->show();
             });
             QObject::connect(referense, &QAction::triggered, this, [this, helpEngine](){
@@ -1949,7 +1954,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
 
                 splitter->resize(800, 600);
-                splitter->setWindowTitle("APPCP HELP");
+                splitter->setWindowTitle("Справка ППИ АППЦП-Р");
                 splitter->show();
             });
         }

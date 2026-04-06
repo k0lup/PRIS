@@ -22,6 +22,10 @@ public:
     bool isValidProt(QString& errorText);
     QString getNewFileDate(QString& errorText);
     QString getFilePath();
+
+    QString getCurProtFilePath() const{
+        return QFileInfo(writeFile).filePath();
+    }
 signals:
     void fileUpdate();
     void fileSaved();
