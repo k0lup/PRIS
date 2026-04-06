@@ -632,7 +632,7 @@ void directRunner::sendMessageToNU(const char *data, int len, bool *status){
     printInProt(QString("%1 Посылаем запрос в НУ kom = 0x%2 len = %3\nЗапрос: %4").arg(QDateTime::currentDateTime().toString("HH:mm:ss")).arg(data[0], 2, 16, QChar('0')).arg(len).arg(byteList.join(" ")), "27", textStyle(), true);
 
     int waitTime = 2000;
-    if (data[0] == char(0x0D)) waitTime += int(data[1]) * 1000;
+    if (data[0] == char(0x0D)) waitTime += int(data[1]) * 1000 + 1000; //добавляем 1 сек, так как ПО НУ не справляется за 2 сек. + задержка
     else if (data[0] == char(0x23)){
         if (data[1] == char(1)) waitTime += 120000;
         else if (data[1] == char(2)) waitTime += 120000;
@@ -3051,7 +3051,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             return false;
         }
         c[0] = char(0x0D);
-        c[1] = char(delayTime + 1);
+        c[1] = char(delayTime);
         sendMessageToNU(c, 2, &status);
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
