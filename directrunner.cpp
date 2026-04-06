@@ -3051,7 +3051,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             return false;
         }
         c[0] = char(0x0D);
-        c[1] = char(delayTime);
+        c[1] = char(delayTime + 1);
         sendMessageToNU(c, 2, &status);
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
