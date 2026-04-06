@@ -108,6 +108,7 @@ signals:
     void voltAnswer();
 
     void errorProtValid(const QString errorProt);
+    void stStopRequested();
 public slots:
     void setVarinatkVar(const QString& var, bool stopProg);
 

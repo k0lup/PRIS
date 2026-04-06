@@ -658,6 +658,7 @@ void directRunner::sendMessageToNU(const char *data, int len, bool *status){
         if (this->can1RR /*&& this->can2RR*/) loop.quit();
     });
     QMetaObject::Connection con2 = QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    QMetaObject::Connection con3 = QObject::connect(this, &directRunner::stStopRequested, &loop, &QEventLoop::quit);
 
     socketCanal1->write(data, len);
     socketCanal1->flush();
@@ -668,7 +669,7 @@ void directRunner::sendMessageToNU(const char *data, int len, bool *status){
     timer.stop();
     QObject::disconnect(con1);
     QObject::disconnect(con2);
-
+    QObject::disconnect(con3);
 
 
 
@@ -678,7 +679,11 @@ void directRunner::sendMessageToNU(const char *data, int len, bool *status){
         //if (!can1RR && !can2RR) canInfo = "по 1 и 2 каналу";
         /*else*/ if (!can1RR) canInfo = "по 1 каналу";
         //else canInfo = "по 2 каналу";
-        printInProt(QString("%1\tПревышен лимит ожидания ответа от НУ %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(canInfo), "13", textStyle());
+        if (ost_flag.load() == 1) {
+            printInProt(QString("%1\tОЖИДАНИЕ ОТВЕТА ОТ НУ ОСТАНОВЛЕНО ПО СРОСТ (=НЕ ПОЛУЧЕН ОТВЕТ ОТ НУ)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "13", textStyle());
+        } else {
+            printInProt(QString("%1\tПревышен лимит ожидания ответа от НУ %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(canInfo), "13", textStyle());
+        }
         return;
     }
     waitNUMessage.store(0);
@@ -3022,6 +3027,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         //socketCanal1->flush();
         bool status;
         sendMessageToNU(c, 1, &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -3032,7 +3038,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
             goto end_metka;
         }
-        if (!status) return false;
         if (respondNU.length() == 2 && respondNU.at(1) == 0){
             //printInProt("NET: получили ответ на ПОДКСОЕД", "30", textStyle());
             printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -3053,6 +3058,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         c[0] = char(0x0D);
         c[1] = char(delayTime);
         sendMessageToNU(c, 2, &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -3061,9 +3067,8 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             bool statusReset{false};
             sendMessageToNU(cBAReset.constData(), cBAReset.length(), &statusReset);
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
-            break;
+            goto end_metka;
         }
-        if (!status) return false;
 
         if (respondNU.length() == 2 && respondNU.at(1) == 0){
             //printInProt("NET: получили ответ на ПОДКСОЕД", "30", textStyle());
@@ -3535,6 +3540,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         c[0] = char(0x0A);
         bool status;
         sendMessageToNU(c, 1, &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -3545,7 +3551,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
             goto end_metka;
         }
-        if (!status) return false;
         if (respondNU.length() == 2 && respondNU.at(1) == 0){
             //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
             printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -3577,6 +3582,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         }
 
         sendMessageToNU(cBA.data(), cBA.length(), &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -3587,9 +3593,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
             goto end_metka;
         }
-
-
-        if (!status) return false;
         if ((respondNU.length() == 2 || respondNU.length() == 3) && respondNU.at(1) == 0){
             //printInProt("NET: получили ответ на ПСИ", "30", textStyle());
             printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -3623,6 +3626,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         cBA.append(char(contacts.count()));
 
         sendMessageToNU(cBA.data(), cBA.length() - 1, &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -3633,8 +3637,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
             goto end_metka;
         }
-
-        if (!status) return false;
 
         if (respondNU.length() < 4){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
@@ -3770,6 +3772,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 cBA.append(char(failureContact[i]));
             }
             sendMessageToNU(cBA.data(), cBA.length(), &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -3780,8 +3783,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-
-            if (!status) return false;
             if ((respondNU.length() == 2 || respondNU.length() == 3) && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСИ", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -3812,6 +3813,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 cBA.append(char(0));
                 cBA.append(failureContact[0]);
                 sendMessageToNU(cBA.data(), cBA.length(), &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -3822,7 +3824,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                     goto end_metka;
                 }
-                if (!status) return false;
                 if ((respondNU.length() == 2 || respondNU.length() == 3) && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСИ", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -3851,6 +3852,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 cBA.append(char(contacts.count() - failureContact.count() + 1));
 
                 sendMessageToNU(cBA.data(), cBA.length() - 1, &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -3861,8 +3863,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                     goto end_metka;
                 }
-
-                if (!status) return false;
 
                 if (respondNU.length() < 4){
                     errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
@@ -4003,6 +4003,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
         cBA.append(0x0A);
         sendMessageToNU(cBA.data(), cBA.length(), &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -4013,7 +4014,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
             goto end_metka;
         }
-        if (!status) return false;
         if (respondNU.length() == 2 && respondNU.at(1) == 0){
             //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
             printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -4178,6 +4178,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         cBA.append(char(0x0a));
         bool status{false};
         sendMessageToNU(cBA.constData(), cBA.length(), &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -4188,7 +4189,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
             goto end_metka;
         }
-        if (!status) return false;
         if (respondNU.length() == 2 && respondNU.at(1) == 0){
             //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
             printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -4212,6 +4212,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         cBA.append(char(1));
         cBA.append(char(numContacts[0]));
         sendMessageToNU(cBA.constData(), cBA.length(), &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -4222,8 +4223,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
             goto end_metka;
         }
-
-        if (!status) return false;
         if (respondNU.length() == 2 && respondNU.at(1) == 0){
             //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
             printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -4257,6 +4256,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             cBA.append(char(1));
             cBA.append(char(numContacts[i]));
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -4267,8 +4267,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -4311,6 +4309,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 cBA.append(char(0x09));
                 QThread::sleep(zdr);
                 sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -4327,6 +4326,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 cBA.append(char(v100Mode));
                 cBA.append(char(zdr));
                 sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -4386,6 +4386,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             cBA.append(char(numContacts[i]));
 
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -4396,7 +4397,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -4476,6 +4476,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         cBA.append(char(numContacts[0]));
 
         sendMessageToNU(cBA.constData(), cBA.length(), &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -4486,7 +4487,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
             goto end_metka;
         }
-        if (!status) return false;
         if (respondNU.length() == 2 && respondNU.at(1) == 0){
             //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
             printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -4508,6 +4508,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         cBA.clear();
         cBA.append(char(0x0a));
         sendMessageToNU(cBA.constData(), cBA.length(), &status);
+        if (!status) return false;
         if (ost_flag.load() == 1){
             if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
@@ -4518,7 +4519,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
             goto end_metka;
         }
-        if (!status) return false;
         if (respondNU.length() == 2 && respondNU.at(1) == 0){
             //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
             printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -4663,6 +4663,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             c[0] = char(0x0A);
             bool status;
             sendMessageToNU(c, 1, &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -4673,7 +4674,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -4695,6 +4695,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             c[1] = char(1);
             c[2] = char(numCont1);
             sendMessageToNU(c, 3, &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -4705,7 +4706,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -4728,6 +4728,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             c[1] = char(1);
             c[2] = char(numCont2);
             sendMessageToNU(c, 3, &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -4738,7 +4739,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -4769,6 +4769,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 c[0] = char(0x09);
                 QThread::sleep(zdr);
                 sendMessageToNU(c, 1, &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -4808,6 +4809,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 c[2] = char(v100Mode);
                 c[3] = char(zdr);
                 sendMessageToNU(c, 4, &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -5004,6 +5006,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             c[1] = char(0);
             c[2] = char(numCont2);
             sendMessageToNU(c, 3, &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -5014,8 +5017,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -5038,6 +5039,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             c[1] = char(0);
             c[2] = char(numCont1);
             sendMessageToNU(c, 3, &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -5048,7 +5050,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -5703,6 +5704,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             cBA.append(char(0x0a));
             bool status{false};
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -5713,7 +5715,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -5737,6 +5738,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             cBA.append(char(1));
             cBA.append(char(numContacts[0]));
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -5747,8 +5749,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -5782,6 +5782,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 cBA.append(char(1));
                 cBA.append(char(numContacts[i]));
                 sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -5792,8 +5793,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                     goto end_metka;
                 }
-
-                if (!status) return false;
                 if (respondNU.length() == 2 && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -5826,6 +5825,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     cBA.append(char(0x06));
                     QThread::sleep(zdr);
                     sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                    if (!status) return false;
                     if (ost_flag.load() == 1){
                         if (dir.numDirect != -1) programs.last().numDir -= 1;
                         QByteArray cBAReset;
@@ -5836,7 +5836,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                         //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                         goto end_metka;
                     }
-                if (!status) return false;
                 if (respondNU.length() == 3 + 4 && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -5892,6 +5891,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 cBA.append(char(numContacts[i]));
 
                 sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -5902,7 +5902,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                     goto end_metka;
                 }
-                if (!status) return false;
                 if (respondNU.length() == 2 && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -5981,6 +5980,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             cBA.append(char(numContacts[0]));
 
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -5991,7 +5991,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -6013,6 +6012,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             cBA.clear();
             cBA.append(char(0x0a));
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
+            if (!status) return false;
             if (ost_flag.load() == 1){
                 if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
@@ -6023,7 +6023,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                 goto end_metka;
             }
-            if (!status) return false;
             if (respondNU.length() == 2 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
@@ -6152,6 +6151,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 c[0] = char(0x0A);
                 bool status;
                 sendMessageToNU(c, 1, &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -6162,7 +6162,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                     goto end_metka;
                 }
-                if (!status) return false;
                 if (respondNU.length() == 2 && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -6184,6 +6183,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 c[1] = char(1);
                 c[2] = char(numCont1);
                 sendMessageToNU(c, 3, &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -6194,7 +6194,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                     goto end_metka;
                 }
-                if (!status) return false;
                 if (respondNU.length() == 2 && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -6217,6 +6216,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 c[1] = char(1);
                 c[2] = char(numCont2);
                 sendMessageToNU(c, 3, &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -6227,7 +6227,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                     goto end_metka;
                 }
-                if (!status) return false;
                 if (respondNU.length() == 2 && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -6249,6 +6248,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     c[0] = char(0x06);
                     QThread::sleep(zdr);
                     sendMessageToNU(c, 1, &status);
+                    if (!status) return false;
                     if (ost_flag.load() == 1){
                         if (dir.numDirect != -1) programs.last().numDir -= 1;
                         QByteArray cBAReset;
@@ -6259,8 +6259,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                         //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                         goto end_metka;
                     }
-
-                if (!status) return false;
                 if (respondNU.length() == 3 + 4 && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -6435,6 +6433,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 c[1] = char(0);
                 c[2] = char(numCont2);
                 sendMessageToNU(c, 3, &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -6445,8 +6444,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                     goto end_metka;
                 }
-
-                if (!status) return false;
                 if (respondNU.length() == 2 && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -6469,6 +6466,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 c[1] = char(0);
                 c[2] = char(numCont1);
                 sendMessageToNU(c, 3, &status);
+                if (!status) return false;
                 if (ost_flag.load() == 1){
                     if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
@@ -6479,7 +6477,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     //printInProt("ЦИКЛОГРАММА ОСТАНОВЛЕНА ПО СРОСТ", "13", textStyle());
                     goto end_metka;
                 }
-                if (!status) return false;
                 if (respondNU.length() == 2 && respondNU.at(1) == 0){
                     //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                     printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);

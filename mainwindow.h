@@ -85,6 +85,8 @@ signals:
     void sendExitEventToNU();
 
     void showHelpForDirect(const QString direct);
+
+    void srStopRequested();
 protected:
     void closeEvent(QCloseEvent *event) override;
 private:

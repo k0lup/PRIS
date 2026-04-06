@@ -1708,6 +1708,7 @@ MainWindow::MainWindow(QWidget *parent)
     QObject::connect(SrStop, &QAction::triggered, this, [this](){
         emit this->printMessageToProtocol("ЗАПРОШЕН ОСТАНОВ ПО СРОСТ", "23");
         this->dirRunner->ost_flag.store(1);
+        emit srStopRequested();
     }, Qt::QueuedConnection);
     QObject::connect(srostM, &QAction::triggered, this, [this](){
         emit this->printMessageToProtocol("ЗАПРОШЕН ОСТАНОВ ПО СРОСТ_М", "23");
@@ -1720,6 +1721,7 @@ MainWindow::MainWindow(QWidget *parent)
         emit this->runDirectives(*directives.at(0));
     }, Qt::QueuedConnection);
     QObject::connect(this, &MainWindow::runDirectives, dirRunner, &directRunner::runDirect);
+    QObject::connect(this, &MainWindow::srStopRequested, dirRunner, &directRunner::stStopRequested);
     dirRunnerThread = new QThread;
     dirRunner->moveToThread(dirRunnerThread);
     QObject::connect(dirRunnerThread, &QThread::started, dirRunner, &directRunner::startWork);
