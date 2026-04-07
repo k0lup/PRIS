@@ -5,6 +5,7 @@
 #include <QtSql>
 #include <QtConcurrent>
 #include <QThread>
+#include <QLockFile>
 #include <QTimer>
 #include "dialogwgt.h"
 #include "protmanager.h"
@@ -1997,31 +1998,63 @@ MainWindow::MainWindow(QWidget *parent)
 
     QString TimeControlPath;
     if (paramValues.contains("КОНТР_ВРЕМЕНИ")){
+        timeControlSocket = new QLocalSocket(this);
         TimeControlPath = paramValues.value("КОНТР_ВРЕМЕНИ");
 
-        if (!QSharedMemory(TIME_CONTROL_MEMORY).attach()){
+        /*QString lockPath = QDir::homePath() + "/PRIS/timeControl.lock";
+        QLockFile lockFile(lockPath);
+        lockFile.setStaleLockTime(0);
+        if (lockFile.tryLock(0)) {
+            lockFile.unlock();;
             QProcess *timeControlProcess = new QProcess(this);
-            qDebug() << "START";
             timeControlProcess->start(QFileInfo(TimeControlPath).filePath());
-        }
-        timeControlSocket = new QLocalSocket(this);
-        QTimer::singleShot(5000, [this](){
-            if (!QSharedMemory(TIME_CONTROL_MEMORY).attach()){
-                emit printMessageToProtocol("НЕ УДАЛОСЬ ЗАПУСТИТЬ СЕРВЕР УЧЕТА ВРЕМЕНИ АППЦП. УЧЕТ ВРЕМЕНИ РАБОТЫ НЕДОПУСТЕН!", "13");
-                return;
-            }
-            //timeControlSocket->disconnectFromServer();
-            timeControlSocket->connectToServer(LOCAL_SERVER_TIME_CONTROL);
-            QTimer::singleShot(5000, [this](){
-               if (timeControlSocket->state() != QLocalSocket::ConnectedState){
-                   emit printMessageToProtocol("НЕ УДАЛОСЬ ПОДКЛЮЧИТЬСЯ К СЕРВЕРУ УЧЕТА ВРЕМЕНИ АППЦП. УЧЕТ ВРЕМЕНИ РАБОТЫ НЕДОПУСТЕН!", "13");
-                   return;
-               }
-               emit printMessageToProtocol("УЧЕТ ВРЕМЕНИ РАБОТЫ АППЦП АКТИВЕН!", "23");
+        }*/
+
+        timeControlSocket->connectToServer(LOCAL_SERVER_TIME_CONTROL);
+        if (timeControlSocket->waitForConnected(500)) {
+            emit printMessageToProtocol("УЧЕТ ВРЕМЕНИ РАБОТЫ АППЦП АКТИВЕН!", "23");
+        } else {
+            QProcess *timeControlProcess = new QProcess(this);
+            timeControlProcess->start(QFileInfo(TimeControlPath).filePath());
+            QTimer *connectTimer = new QTimer(this);
+            connectTimer->setInterval(1000); // пробуем раз в секунду
+
+            QElapsedTimer *elapsed = new QElapsedTimer();
+            elapsed->start();
+
+            connect(connectTimer, &QTimer::timeout, this, [this, connectTimer, elapsed]() {
+                // Если уже подключены - больше ничего не делаем
+                if (timeControlSocket->state() == QLocalSocket::ConnectedState) {
+                    emit printMessageToProtocol("УЧЕТ ВРЕМЕНИ РАБОТЫ АППЦП АКТИВЕН!", "23");
+                    connectTimer->stop();
+                    connectTimer->deleteLater();
+                    delete elapsed;
+                    return;
+                }
+
+                // Если время ожидания вышло
+                if (elapsed->elapsed() >= 5000) {
+
+                    emit printMessageToProtocol(
+                        "НЕ УДАЛОСЬ ПОДКЛЮЧИТЬСЯ К СЕРВЕРУ УЧЕТА ВРЕМЕНИ АППЦП. УЧЕТ ВРЕМЕНИ РАБОТЫ НЕДОПУСТЕН!",
+                        "13"
+                    );
+
+                    connectTimer->stop();
+                    connectTimer->deleteLater();
+                    delete elapsed;
+                    return;
+                }
+
+                // Если сейчас сокет не в процессе подключения - пробуем снова
+                if (timeControlSocket->state() == QLocalSocket::UnconnectedState) {
+                    timeControlSocket->abort(); // на всякий случай сброс старого состояния
+                    timeControlSocket->connectToServer(LOCAL_SERVER_TIME_CONTROL);
+                }
             });
-        });
-    } else{
-        emit printMessageToProtocol("НЕТ ПУТИ К СЕРВЕРУ УЧЕТА ВРЕМЕНИ АППЦП (.exe файл). УЧЕТ ВРЕМЕНИ РАБОТЫ НЕДОСТУПЕН!", "13");
+
+            connectTimer->start();
+        }
     }
 }
 
