@@ -182,7 +182,7 @@ MainWindow::MainWindow(QWidget *parent)
         curCatalogs.push_back(path);
     }
 
-    MainWindow::curSaveProtPath = paramOnValues.value("ПРОГРАММЫ");
+    MainWindow::curSaveProtPath = paramOnValues.value("ПРОТОКОЛ");
     if (curSaveProtPath.isEmpty()) curSaveProtPath = QCoreApplication::applicationDirPath();
 
 

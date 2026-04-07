@@ -5484,8 +5484,20 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             int number = numberStr.toInt();
             if (number > numTraf) numTraf = number;
         }
-        QString fullSaveFilePath = QDir(QString(catalog + "\\" + /*directory.dirName() +"_" + MainWindow::getNumProduct() + "_" + */fileUserName +"_" + traf.left(4) + "-" + QString("%1").arg(numTraf + 1, 4, 10, QChar('0')) + ".PCP")).path();
-        QString fullNUSaveFilePath = QDir(QDir(QFileInfo(fullSaveFilePath).absoluteDir()).filePath("НУ")).filePath(QFileInfo(fullSaveFilePath).completeBaseName() + ".txt");
+
+        QString baseFileName =
+                QString("%1_%2-%3.PCP")
+                    .arg(fileUserName)
+                    .arg(traf.left(4))
+                    .arg(numTraf + 1, 4, 10, QChar('0'));
+
+        QString fullSaveFilePath = QDir(catalog).filePath(baseFileName);
+
+        QFileInfo saveFileInfo(fullSaveFilePath);
+        QString fullNUSaveFilePath =
+                QDir(saveFileInfo.absoluteDir().filePath("НУ"))
+                    .filePath(saveFileInfo.completeBaseName() + ".txt");
+
         QStringList timeWork;
         {
             m_timeWorkAppcp.clear();
