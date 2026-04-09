@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     lock.setStaleLockTime(0); // 0 = Qt сам решает, когда считать lock "протухшим"
 
     if (!lock.tryLock(0)) {
-        QMessageBox::critical(nullptr, "Ошибка", "Приложение уже запущено!");
+        QMessageBox::critical(nullptr, "Ошибка", "Запуск нескольких экземпляров ППИ АППЦП-Р недопустим!");
         return 0;
     }
     MainWindow w;

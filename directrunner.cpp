@@ -4961,7 +4961,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             for (int i = 0; i < 6; i++){
                 QString infoSection = infoSections[i];
                 if (infoSection.length() > tableSplit.split("|")[i + 1].length()){
-                    infoSection = infoSection.left(table.split("\n")[0].split("|")[i + 1].length());
+                    infoSection = infoSection.left(tableSplit.split("\n")[0].split("|")[i + 1].length());
                 }
                 int needSpace = tableSplit.split("|")[i + 1].length() - infoSection.length();
                 int needSpaceLeft = needSpace / 2 + needSpace % 2;
@@ -6414,7 +6414,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 for (int i = 0; i < 6; i++){
                     QString infoSection = infoSections[i];
                     if (infoSection.length() > tableSplit.split("|")[i + 1].length()){
-                        infoSection = infoSection.left(table.split("\n")[0].split("|")[i + 1].length());
+                        infoSection = infoSection.left(tableSplit.split("\n")[0].split("|")[i + 1].length());
                     }
                     int needSpace = tableSplit.split("|")[i + 1].length() - infoSection.length();
                     int needSpaceLeft = needSpace / 2 + needSpace % 2;
@@ -6523,7 +6523,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         stopProg = true;
         stopMessageStr = "ОСТАНОВ ПО НЕНОРМЕ ОПЕРАЦИИ";
     }
-    if (ost_flag.load() == 1 || m_ost_flag.load() == 1){
+    if ((ost_flag.load() == 1 || m_ost_flag.load() == 1) && hasRunProg){
         stopProg = true;
         stopMessageStr = "ОСТАНОВ ПО ЗАПРОСУ ОПЕРАТОРА ";
         if (ost_flag.load() == 1){
@@ -6825,6 +6825,7 @@ bool directRunner::runCommandNU(const unsigned char command, int contact, bool s
         }
         printMessage.append(QString("Директива %4: контакт %1 %2. <%3>").arg(contact).arg(setConnect ? "вкл" : "выкл").arg(contact == 100 ? "земля" : QString::number(contact + 1)).arg(dirName));
         printInProt(printMessage, "30", textStyle());
+        emit printMessageToManualWindow(printMessage, "blue");
     } else if (command == static_cast<char>(NUCommand::SBR_PODKL)){
         QByteArray cBA;
         cBA.append(char(0x0A));
@@ -6959,6 +6960,7 @@ bool directRunner::runCommandNU(const unsigned char command, int contact, bool s
         message = printMessage + "Замер произведен";
         emit printMessageToManualWindow(message, "blue");
         message = printMessage + QString("Замер напряжения: %1").arg(QString::number(result, 'f', 6));
+        printInProt(message, "29", textStyle());
         emit printMessageToManualWindow(message, "blue");
         emit sendResulToManualWindow(result);
     } else if (command == static_cast<char>(NUCommand::PODKL_1M)){

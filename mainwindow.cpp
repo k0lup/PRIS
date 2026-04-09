@@ -326,14 +326,14 @@ MainWindow::MainWindow(QWidget *parent)
         toDirectAction->setShortcut(QKeySequence("CTRL+3"));
         this->addAction(toDirectAction);
         toDirectAction->setShortcutContext(Qt::ApplicationShortcut);
-        QAction *exitProgramAction = programActionMenu->addAction("Выход");
+        QAction *exitProgramAction = programActionMenu->addAction("ВЫХОД");
         exitProgramAction->setShortcut(QKeySequence("CTRL+4"));
         this->addAction(exitProgramAction);
         exitAction->setShortcutContext(Qt::ApplicationShortcut);
         QAction *rExitProgramAction = programActionMenu->addAction("РВЫХОД");
         rExitProgramAction->setShortcut(QKeySequence("CTRL+5"));
         this->addAction(rExitProgramAction);
-        QAction *repeatAction = programActionMenu->addAction("Повтор");
+        QAction *repeatAction = programActionMenu->addAction("ПОВТОР");
         repeatAction->setShortcut(QKeySequence("CTRL+7"));
         this->addAction(repeatAction);
         repeatAction->setShortcutContext(Qt::ApplicationShortcut);
@@ -822,7 +822,7 @@ MainWindow::MainWindow(QWidget *parent)
             QPushButton *toDown = new QPushButton(QIcon(":/img/img/arrowDown.png"), "", directInfoWgt);
             QPushButton *toBottom = new QPushButton(QIcon(":/img/img/arrowDownToEnd.png"), "", directInfoWgt);
             QLineEdit *findLineEdit = new QLineEdit(directInfoWgt);
-            QPushButton *copy = new QPushButton("копировать", directInfoWgt);
+            QPushButton *copy = new QPushButton("Копировать", directInfoWgt);
 
             QHBoxLayout *hBox = new QHBoxLayout();
             hBox->addWidget(toTop, Qt::AlignLeft);
@@ -990,7 +990,7 @@ MainWindow::MainWindow(QWidget *parent)
            downBtn->setIcon(QIcon(":/img/img/arrowDown.png"));
            bottomBtn->setIcon(QIcon(":/img/img/arrowDownToEnd.png"));
 
-           QPushButton *findBtn = new QPushButton("найти", paramAPPCPInfo);
+           QPushButton *findBtn = new QPushButton("Найти", paramAPPCPInfo);
            QPushButton *copyBtn = new QPushButton("Копировать", paramAPPCPInfo);
 
            QHBoxLayout *hBox = new QHBoxLayout();
@@ -1170,7 +1170,7 @@ MainWindow::MainWindow(QWidget *parent)
             downBtn->setIcon(QIcon(":/img/img/arrowDown.png"));
             bottomBtn->setIcon(QIcon(":/img/img/arrowDownToEnd.png"));
 
-            QPushButton *findBtn = new QPushButton("найти", rrParWgt);
+            QPushButton *findBtn = new QPushButton("Найти", rrParWgt);
 
             QPushButton *copyBtn = new QPushButton("Копировать", rrParWgt);
 
@@ -1613,7 +1613,7 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
             QObject::connect(selectBtn, &QPushButton::clicked, [listWgt](){
-               for (int row = 31; row < listWgt->count(); ++row){
+               for (int row = 30; row < listWgt->count(); ++row){
                    listWgt->item(row)->setCheckState(Qt::Checked);
                }
             });
@@ -1764,7 +1764,7 @@ MainWindow::MainWindow(QWidget *parent)
         if (paramValues.contains("ПП")){
             QString pfPath = paramValues.value("ПП");
 
-            QString fileName = QFileDialog::getOpenFileName(this, "Выберите файл", "", "Файлы циклограмм (*.dip);;Файлы настройки (*.set);;Файлы структуры (*.dii)");
+            QString fileName = QFileDialog::getOpenFileName(this, "Выберите файл", MainWindow::getProgramCatalog().value(0), "Файлы циклограмм (*.dip);;Файлы настройки (*.set);;Файлы структуры (*.dii)");
 
             QProcess *pfProcess = new QProcess(this);
             pfProcess->start(QFileInfo(pfPath).filePath(), {fileName});
@@ -1780,7 +1780,7 @@ MainWindow::MainWindow(QWidget *parent)
         if (paramValues.contains("ППИ")){
             QString protViewPath = paramValues.value("ППИ");
 
-            QString fileName = QFileDialog::getOpenFileName(this, "Выберите файл протокола", "", "*.pcp");
+            QString fileName = QFileDialog::getOpenFileName(this, "Выберите файл протокола", MainWindow::getProgramCatalog().value(0), "*.pcp");
 
             QProcess *protViewProcess = new QProcess(this);
             protViewProcess->start(QFileInfo(protViewPath).filePath(), {fileName});
