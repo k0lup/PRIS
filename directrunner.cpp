@@ -4302,7 +4302,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             if (diapVal == 0){
                 if (this->v100Mode) {
                     errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                    errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd < 1КОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
+                    errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd &lt; 1КОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
                     printInProt(errorMessage, "13", textStyle());
                     return false;
                 }
@@ -4762,7 +4762,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             if (diap == 0){
                 if (this->v100Mode) {
                     errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                    errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd < 1КОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
+                    errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd &lt; 1КОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
                     printInProt(errorMessage, "13", textStyle());
                     return false;
                 }

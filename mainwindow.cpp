@@ -95,12 +95,6 @@ MainWindow::MainWindow(QWidget *parent)
     statusOpenned = true;
     onFilePath = fileOnPath;
 
-    if (paramValues.contains("ИМИТ") && paramValues.value("ИМИТ").toUpper() == "ДА"){
-        constValues::isImitMode.store(1);
-    } else{
-        constValues::isImitMode.store(0);
-    }
-
     if (paramValues.contains("ВКЛ_КС") && paramValues.value("ВКЛ_КС").toUpper() == "ДА"){
         constValues::isNeedCheckKS.store(1);
     } else{
@@ -266,7 +260,7 @@ MainWindow::MainWindow(QWidget *parent)
         modeTestAVT->setChecked(true);
         QAction *printNorm = modeMenu->addAction("Печать норм");
         printNorm->setCheckable(true);
-        printNorm->setChecked(true);
+        //printNorm->setChecked(true);
         QAction *setReactNotNormNext = modeMenu->addAction("Реакция на ненорм. СЛЕД");
         setReactNotNormNext->setCheckable(true);
         setReactNotNormNext->setChecked(true);
@@ -513,6 +507,22 @@ MainWindow::MainWindow(QWidget *parent)
     hBox->addWidget(infoWgt, 0, Qt::AlignRight);
 
     centralWgt->setLayout(hBox);
+
+    if (paramValues.contains("ИМИТ") && paramValues.value("ИМИТ").toUpper() == "ДА"){
+        printNorm->setChecked(true);
+        constValues::isImitMode.store(1);
+    } else{
+        printNorm->setChecked(false);
+        constValues::isImitMode.store(0);
+    }
+
+    QObject::connect(printNorm, &QAction::triggered, this, [printNorm](){
+        if (printNorm->isChecked()) {
+            constValues::isImitMode.store(1);
+        } else {
+            constValues::isImitMode.store(0);
+        }
+    });
 
     QObject::connect(manualControl, &QAction::triggered, [this](){
         if (!manual){

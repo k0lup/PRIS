@@ -765,6 +765,7 @@ void ManualMode::showEvent(QShowEvent *event){
 }
 
 void ManualMode::closeEvent(QCloseEvent *event){
+    reset->clicked(true);
     emit widgetClosed();
     QWidget::closeEvent(event);
 }
