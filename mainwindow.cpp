@@ -1209,6 +1209,7 @@ MainWindow::MainWindow(QWidget *parent)
 
            QObject::connect(findBtn, &QPushButton::clicked, [tableView, model](){
                QDialog *findDialog = new QDialog();
+               findDialog->setWindowTitle("Окно поиска");
                findDialog->setModal(true);
 
                QLabel *titleColFind = new QLabel("Поле", findDialog);
@@ -1452,6 +1453,7 @@ MainWindow::MainWindow(QWidget *parent)
 
             QObject::connect(findBtn, &QPushButton::clicked, [rrParView, rrParModel](){
                 QDialog *findDialog = new QDialog();
+                findDialog->setWindowTitle("Окно поиска");
                 findDialog->setModal(true);
 
                 QLabel *titleColFind = new QLabel("Поле", findDialog);
