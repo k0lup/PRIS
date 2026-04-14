@@ -913,7 +913,9 @@ void directRunner::runProgram(/*QTextEdit *protocol, QWidget *protocolWgt, QStan
             return;
         }
         hasRunProg = true;
+        qDebug() << programs.last().numDir;
         runNorm = runDirectFunc(*program.directList[programs.last().numDir]/*, protocol, protocolWgt, programInfomodel*/);
+        qDebug() << programs.last().numDir;
         {
             int nextDirNumLine;
             if (programs.last().directList.count() <= programs.last().numDir + 1) nextDirNumLine = programs.last().programText.count();
@@ -968,7 +970,9 @@ void directRunner::runProgram(/*QTextEdit *protocol, QWidget *protocolWgt, QStan
             programs.last().blockRun = true;
             return;
         }
+        qDebug() << programs.last().numDir;
         programs.last().numDir += 1;
+        qDebug() << programs.last().numDir;
         if (stopProg && programs.last().numDir >= programs.last().directList.count()){
             stopProg = false;
         }
@@ -3029,7 +3033,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(c, 1, &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -3060,7 +3064,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(c, 2, &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -3542,7 +3546,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(c, 1, &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -3584,7 +3588,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(cBA.data(), cBA.length(), &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -3628,7 +3632,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(cBA.data(), cBA.length() - 1, &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -3774,7 +3778,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(cBA.data(), cBA.length(), &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -3815,7 +3819,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(cBA.data(), cBA.length(), &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -3854,7 +3858,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(cBA.data(), cBA.length() - 1, &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -4005,7 +4009,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(cBA.data(), cBA.length(), &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -4180,7 +4184,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(cBA.constData(), cBA.length(), &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -4214,7 +4218,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(cBA.constData(), cBA.length(), &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -4258,7 +4262,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -4311,7 +4315,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(cBA.constData(), cBA.length(), &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -4328,7 +4332,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(cBA.constData(), cBA.length(), &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -4388,7 +4392,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -4478,7 +4482,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(cBA.constData(), cBA.length(), &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -4510,7 +4514,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         sendMessageToNU(cBA.constData(), cBA.length(), &status);
         if (!status) return false;
         if (ost_flag.load() == 1){
-            if (dir.numDirect != -1) programs.last().numDir -= 1;
+            //if (dir.numDirect != -1) programs.last().numDir -= 1;
             QByteArray cBAReset;
             cBAReset.clear();
             cBAReset.append(char(0x0a));
@@ -4665,7 +4669,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(c, 1, &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -4697,7 +4701,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(c, 3, &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -4730,7 +4734,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(c, 3, &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -4771,7 +4775,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(c, 1, &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -4811,7 +4815,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(c, 4, &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -5008,7 +5012,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(c, 3, &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -5041,7 +5045,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(c, 3, &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -5472,7 +5476,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             }
             return false;
         }
-        QString traf = MainWindow::getOnParam("ТРАФАРЕТ");
+        QString traf = MainWindow::getOnParam("ТРАФАРЕТ").toUpper();
         int numTraf = traf.right(4).toInt();
 
         QRegularExpression regex(QString(".*%1-(\\d{4})\\.").arg(traf.left(4)));
@@ -5718,7 +5722,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -5752,7 +5756,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -5796,7 +5800,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(cBA.constData(), cBA.length(), &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -5839,7 +5843,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     sendMessageToNU(cBA.constData(), cBA.length(), &status);
                     if (!status) return false;
                     if (ost_flag.load() == 1){
-                        if (dir.numDirect != -1) programs.last().numDir -= 1;
+                        //if (dir.numDirect != -1) programs.last().numDir -= 1;
                         QByteArray cBAReset;
                         cBAReset.clear();
                         cBAReset.append(char(0x0a));
@@ -5905,7 +5909,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(cBA.constData(), cBA.length(), &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -5994,7 +5998,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -6026,7 +6030,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             sendMessageToNU(cBA.constData(), cBA.length(), &status);
             if (!status) return false;
             if (ost_flag.load() == 1){
-                if (dir.numDirect != -1) programs.last().numDir -= 1;
+                //if (dir.numDirect != -1) programs.last().numDir -= 1;
                 QByteArray cBAReset;
                 cBAReset.clear();
                 cBAReset.append(char(0x0a));
@@ -6165,7 +6169,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(c, 1, &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -6197,7 +6201,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(c, 3, &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -6230,7 +6234,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(c, 3, &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -6262,7 +6266,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     sendMessageToNU(c, 1, &status);
                     if (!status) return false;
                     if (ost_flag.load() == 1){
-                        if (dir.numDirect != -1) programs.last().numDir -= 1;
+                        //if (dir.numDirect != -1) programs.last().numDir -= 1;
                         QByteArray cBAReset;
                         cBAReset.clear();
                         cBAReset.append(char(0x0a));
@@ -6447,7 +6451,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(c, 3, &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));
@@ -6480,7 +6484,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 sendMessageToNU(c, 3, &status);
                 if (!status) return false;
                 if (ost_flag.load() == 1){
-                    if (dir.numDirect != -1) programs.last().numDir -= 1;
+                    //if (dir.numDirect != -1) programs.last().numDir -= 1;
                     QByteArray cBAReset;
                     cBAReset.clear();
                     cBAReset.append(char(0x0a));

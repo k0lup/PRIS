@@ -119,5 +119,9 @@ private:
     QThread *dirRunnerThread;
 
     QTimer *timerForCheckValidProt;
+
+    bool changeCurCatalog = false;
+
+    QString numVersion = "01.00";
 };
 #endif // MAINWINDOW_H

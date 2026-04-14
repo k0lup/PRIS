@@ -35,7 +35,7 @@ QMap<QString, contactAppcp> appcpParam = QMap<QString, contactAppcp>();
 
 const static QString TIME_CONTROL_MEMORY = "TimerControlAppcp284v2";
 const static QString LOCAL_SERVER_TIME_CONTROL = "TimeControlAppcp284Server";
-const static QString TITLE_STRING = "ППИ АППЦП-Р: вер.01.00 ПРОТОКОЛ: ";
+const static QString TITLE_STRING = "ППИ АППЦП-Р: вер.%1 ПРОТОКОЛ: ";
 
 const static int DEFAULT_DELAY_CHECK_VALID_PROT = 60000;
 
@@ -45,7 +45,6 @@ const static int DEFAULT_DELAY_CHECK_VALID_PROT = 60000;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    //this->setWindowTitle(TITLE_STRING);
     dirRunnerThread = nullptr;
     //blockDirectRun.store(0);
     QDir dir(QDir::homePath());
@@ -93,8 +92,7 @@ MainWindow::MainWindow(QWidget *parent)
         return;
     }
     statusOpenned = true;
-    onFilePath = fileOnPath;
-
+    onFilePath = fileOnPath;    
     if (paramValues.contains("ВКЛ_КС") && paramValues.value("ВКЛ_КС").toUpper() == "ДА"){
         constValues::isNeedCheckKS.store(1);
     } else{
@@ -121,6 +119,13 @@ MainWindow::MainWindow(QWidget *parent)
             qDebug() << "WAR: " << val;
             portAppcpWriteAndRead = val;
         }
+    } else {
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось получить номер порта ПРИЕМ_ПЕРЕДАЧА", QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
+        statusOpenned = false;
+        return;
     }
 
     if (paramValues.contains("ПОРТ_ТОЛЬКО_ПРИЕМ")){
@@ -142,6 +147,13 @@ MainWindow::MainWindow(QWidget *parent)
             qDebug() << "OR: " << val;
             portAppcpOnlyRead = val;
         }
+    } else {
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось получить номер порта ТОЛЬКО_ПРИЕМ", QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
+        statusOpenned = false;
+        return;
     }
 
     QString curCatalog = paramOnValues.value("ПРОГРАММЫ");
@@ -182,7 +194,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     //dirRunner = &directRunner::instance();
     dirRunner = new directRunner();
-    this->setWindowTitle(TITLE_STRING + ProtManager::instance().getCurProtFilePath());
+    if (!paramValues.contains("НОМЕР_ВЕРСИИ")) {
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось получить номер версии", QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
+        statusOpenned = false;
+        return;
+    }
+    this->setWindowTitle(TITLE_STRING.arg(paramValues.value("НОМЕР_ВЕРСИИ")) + ProtManager::instance().getCurProtFilePath());
 
     QObject::connect(dirRunner, &directRunner::showVarDialogWindow, this, &MainWindow::showVariantDialogWindow, Qt::QueuedConnection);
     QObject::connect(this, &MainWindow::variantSelected, dirRunner, &directRunner::setVarinatkVar);
@@ -512,6 +532,7 @@ MainWindow::MainWindow(QWidget *parent)
         printNorm->setChecked(true);
         constValues::isImitMode.store(1);
     } else{
+        printNorm->setCheckable(false);
         printNorm->setChecked(false);
         constValues::isImitMode.store(0);
     }
@@ -638,6 +659,7 @@ MainWindow::MainWindow(QWidget *parent)
     this->rrParDB = QSqlDatabase::addDatabase("QSQLITE", "RR PAR");
 
     QString dbFilePath = paramOnValues.value("РР_ПАРАМЕТРЫ");
+    bool existRRParDb = QFile(dbFilePath).exists();
     if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
         QString errorMessage(QString("Не удалось открыть БД РР параметров!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
@@ -668,12 +690,34 @@ MainWindow::MainWindow(QWidget *parent)
         qDebug() << "DB_NOT_OPEN";
         qDebug() << rrParDB.lastError().text();
     }
+    if (!existRRParDb) {
+        QSqlQuery query(rrParDB);
+
+        QString createTableQuery =
+                "CREATE TABLE IF NOT EXISTS \"RR_PAR\" ("
+                "\"Bl_Name\" TEXT, "
+                "\"Par_Name\" TEXT, "
+                "\"Index\" INTEGER, "
+                "\"Val\" REAL"
+                ");";
+
+        if (!query.exec(createTableQuery)) {
+            QString errorMessage(QString("Не удалось создать БД РР параметров!\n%1").arg(query.lastError().text()));
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
+            QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
+            qDebug() << "DB_NOT_OPEN";
+            qDebug() << rrParDB.lastError().text();
+            return;
+        }
+    }
 
     appcpParDB = QSqlDatabase::addDatabase("QSQLITE", "APPCP PAR");
     dbFilePath = paramValues.value("БАЗА_ДАННЫХ");
     ipAppcpServ = paramValues.value("СЕРВЕР_АППЦП");
 
-    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
+    if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE") || !QFile(dbFilePath).exists()){
         QString errorMessage(QString("Не удалось открыть БД параметров АППЦП!"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
         msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
@@ -731,6 +775,99 @@ MainWindow::MainWindow(QWidget *parent)
 
     nameKA->setText(paramValues.value("КОСМИЧЕСКИЙ_АППАРАТ"));
 
+    if (!paramValues.contains("ПФКС") || !QFile(paramValues.value("ПФКС")).exists()) {
+        PFKS->setEnabled(false);
+    }
+
+    QObject::connect(PFKS, &QAction::triggered, this, [this](){
+        if (programInfomodel->rowCount() >= 1) {
+            QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ ПФКС ПРИ НАЛИЧИИ ВЫЗВАННЫХ ЦИКЛОГРАММ!");
+            return;
+        } else {
+            QString programPath = paramValues.value("ПФКС");
+            if (programPath.trimmed().isEmpty()) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ ПФКС! ПУТЬ К ФАЙЛУ ПУСТОЙ!");
+                    return;
+                }
+
+                QFileInfo fileInfo(programPath);
+
+                if (!fileInfo.exists()) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ ПФКС! ФАЙЛА НЕ СУЩЕСТВУЕТ");
+                    return;
+                }
+
+                if (!fileInfo.isFile()) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ ПФКС! ПУТЬ НЕ УКАЗЫВАЕТ НА ФАЙЛ!");
+                    return;
+                }
+
+                if (!fileInfo.isExecutable()) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ ПФКС! ФАЙЛ НЕ ЯВЛЯЕТСЯ ИСПОЛНЯЕМЫМ!");
+                    return;
+                }
+
+                // 2. Создаем процесс
+                QProcess process;
+
+                // 3. Запускаем
+                process.start(programPath);
+
+                // 4. Ждем, стартовал ли он
+                if (!process.waitForStarted(3000)) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕ УДАЛОСЬ ЗАПУСТИТЬ ПФКС!");
+                    return;
+                }
+                return;
+        }
+    });
+
+    if (!paramValues.contains("РЕДАКТОР") || !QFile(paramValues.value("РЕДАКТОР")).exists()) {
+        editorCyclogram->setEnabled(false);
+    }
+
+    QObject::connect(editorCyclogram, &QAction::triggered, this, [this](){
+        if (programInfomodel->rowCount() >= 1) {
+            QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ РЕДАКТОР ЦИКЛОГРАММ ПРИ НАЛИЧИИ ВЫЗВАННЫХ ЦИКЛОГРАММ!");
+            return;
+        } else {
+            QString programPath = paramValues.value("РЕДАКТОР");
+            if (programPath.trimmed().isEmpty()) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ РЕДАКТОР ЦИКЛОГРАММ! ПУТЬ К ФАЙЛУ ПУСТОЙ!");
+                    return;
+                }
+
+                QFileInfo fileInfo(programPath);
+
+                if (!fileInfo.exists()) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ РЕДАКТОР ЦИКЛОГРАММ! ФАЙЛА НЕ СУЩЕСТВУЕТ");
+                    return;
+                }
+
+                if (!fileInfo.isFile()) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ РЕДАКТОР ЦИКЛОГРАММ! ПУТЬ НЕ УКАЗЫВАЕТ НА ФАЙЛ!");
+                    return;
+                }
+
+                if (!fileInfo.isExecutable()) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ РЕДАКТОР ЦИКЛОГРАММ! ФАЙЛ НЕ ЯВЛЯЕТСЯ ИСПОЛНЯЕМЫМ!");
+                    return;
+                }
+
+                // 2. Создаем процесс
+                QProcess process;
+
+                // 3. Запускаем
+                process.start(programPath);
+
+                // 4. Ждем, стартовал ли он
+                if (!process.waitForStarted(3000)) {
+                    QMessageBox::warning(nullptr, "Предупреждение", "НЕ УДАЛОСЬ ЗАПУСТИТЬ РЕДАКТОР ЦИКЛОГРАММ!");
+                    return;
+                }
+                return;
+        }
+    });
 
     this->raise();
     this->activateWindow();
@@ -949,6 +1086,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
     QObject::connect(&ProtManager::instance(), &ProtManager::fileSaved, this, [this](){
           this->protocolText->setText("");
+          this->protocolText->verticalScrollBar()->setValue(protocolText->verticalScrollBar()->maximum());
         //this->protocolText->append("ЗАКРЫТИЕ");
         //QMetaObject::invokeMethod(protocolText, "setText", Qt::BlockingQueuedConnection, Q_ARG(QString, ""));
     }, Qt::QueuedConnection);
@@ -1224,7 +1362,7 @@ MainWindow::MainWindow(QWidget *parent)
 
             QSqlQuery query(rrParDB);
             if (!query.exec(QString("SELECT DISTINCT Bl_Name FROM RR_PAR"))){
-                qDebug() << "query error";
+                QMessageBox::warning(nullptr, "Предупреждение", QString("Ошибка запроса к БД РР-пар:\n%1").arg(query.lastError().text()));
                 return;
             }
 
@@ -1669,8 +1807,13 @@ MainWindow::MainWindow(QWidget *parent)
        QString catalog = QFileDialog::getExistingDirectory(this, "Выберите каталог", QDir::homePath(), QFileDialog::ShowDirsOnly);
        if (!catalog.isEmpty() && QDir(catalog).exists()){
            //this->curCatalog = catalog;
-           this->curCatalogs.clear();
-           this->curCatalogs.append(catalog);
+           if (this->changeCurCatalog) {
+               curCatalogs.removeFirst();
+           }
+           this->changeCurCatalog = true;
+           this->curCatalogs.prepend(catalog);
+           //this->curCatalogs.clear();
+           //this->curCatalogs.append(catalog);
            emit this->printMessageToProtocol(QString("Каталог: %1").arg(catalog), "0");
        }
     });
@@ -2196,6 +2339,7 @@ void MainWindow::showVariantDialogWindow(const QString& text, const QStringList&
 
 void MainWindow::appendMessageToProtocol(const QString& message){
     protocolText->append(message);
+    protocolText->verticalScrollBar()->setValue(protocolText->verticalScrollBar()->maximum());
 
     //emit this->protChanged();
     emit this->protocolMessageSet();
