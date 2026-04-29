@@ -99,6 +99,44 @@ MainWindow::MainWindow(QWidget *parent)
         constValues::isNeedCheckKS.store(0);
     }
 
+    nu_process = new QProcess(this);
+    QString nu_path;
+
+    if (paramValues.contains("НУ")) {
+        nu_path = paramValues.value("НУ");
+        QFileInfo fi(nu_path);
+
+        if (fi.fileName() == nu_path) {
+            nu_path.prepend((QDir::homePath() + "/APPCP/"));
+        }
+    } else {
+        QString errorMessage(QString("Нет пути к ПО НУ в файле конфигурации\n") + error_read_config);
+        //QMessageBox::critical(nullptr, "Ошибка", errorMessage);
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
+        statusOpenned = false;
+        return;
+    }
+
+    connect(nu_process, &QProcess::readyReadStandardOutput, [=]() {
+        QByteArray data = nu_process->readAllStandardOutput();
+        qDebug() << "[NU_OUT]" << data;
+    });
+
+    connect(nu_process, &QProcess::readyReadStandardError, [=]() {
+        QByteArray data = nu_process->readAllStandardError();
+        qDebug() << "[NU_ERR]" << data;
+    });
+
+
+    nu_process->setProgram("/bin/bash");
+
+    nu_process->setArguments({nu_path});
+    nu_process->setWorkingDirectory(QFileInfo(nu_path).absolutePath());
+
+    nu_process->start();
 
     if (paramValues.contains("ПОРТ_ПРИЕМ_ПЕРЕДАЧА")){
         bool ok{false};
@@ -2250,6 +2288,12 @@ bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>&
 
 MainWindow::~MainWindow()
 {
+    if (nu_process) {
+        nu_process->terminate();
+        if (!nu_process->waitForFinished(3000)) {
+            nu_process->kill();
+        }
+    }
     if (stepWgt != nullptr && this->statusOpenned) delete this->stepWgt;
     emit sendExitEventToNU();
     if (dirRunnerThread != nullptr && dirRunnerThread->isRunning()){

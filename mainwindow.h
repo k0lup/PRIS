@@ -10,6 +10,7 @@
 #include <QLocalSocket>
 #include <QThread>
 #include <QTimer>
+#include <QProcess>
 #include "stepwgt.h"
 
 struct contactAppcp{
@@ -123,5 +124,7 @@ private:
     bool changeCurCatalog = false;
 
     QString numVersion = "01.00";
+
+    QProcess *nu_process;
 };
 #endif // MAINWINDOW_H

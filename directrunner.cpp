@@ -6637,19 +6637,7 @@ directRunner::~directRunner(){
 
 void directRunner::connectNU(){
 
-    if (socketCanal1->state() != QAbstractSocket::ConnectedState || socketCanal2->state() != QAbstractSocket::ConnectedState){
-        /*socketCanal1->connectToHost("127.0.0.1", 0x4567);
-        if (!socketCanal1->waitForConnected(3000)){
-            printInProt(QString("Ошибка установки связи с НУ по каналу 1"), "13", textStyle());
-        } else{
-            printInProt(QString("Связь установлена с НУ по каналу 1"), "23", textStyle());
-        }
-        socketCanal2->connectToHost("127.0.0.1", 0x4568);
-        if (!socketCanal2->waitForConnected(3000)){
-            printInProt(QString("Ошибка установки связи с НУ по каналу 2"), "13", textStyle());
-        } else{
-            printInProt(QString("Связь установлена с НУ по каналу 2"), "23", textStyle());
-        }*/
+    /*if (socketCanal1->state() != QAbstractSocket::ConnectedState || socketCanal2->state() != QAbstractSocket::ConnectedState){
         printInProt(QString("%1\tУстанавливаем связь с НУ").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "23", textStyle());
         printInProt(QString("**********************************************"), "30", textStyle());
         qDebug() << ipAppcpServ;
@@ -6665,87 +6653,76 @@ void directRunner::connectNU(){
         });
     } else{
         printInProt(QString("%1\tСвязь с НУ уже установлена").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")), "23", textStyle());
-    }
-
-    /*if (MainWindow::getCfgParam("ВН_ПРИБОР") == "ДА") {
-        this->hasVoltMode = true;
-        if (voltSocket->state() != QAbstractSocket::ConnectedState) {
-            this->voltSocket->connectToHost("127.0.0.1", 0x4005);
-            printInProt(QString("Устанавливаем связь с Вольтметром"), "23", textStyle());
-            printInProt(QString("**********************************************"), "30", textStyle());
-            QTimer::singleShot(3000, this, [this](){
-               if (this->voltSocket->state() != QAbstractSocket::ConnectedState) {
-                    printInProt(QString("Ошибка установки связи с Вольтметром"), "13", textStyle());
-               } else {
-                   QByteArray cBA;
-                   cBA.append(char(0x01)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00));
-
-                   QEventLoop loop;
-                   QTimer timer;
-                   timer.setSingleShot(true);
-
-                   QMetaObject::Connection con3 = QObject::connect(voltSocket, &QTcpSocket::readyRead, [this](){
-            qDebug() << "VOLT";
-                               QByteArray answer = voltSocket->readAll();
-
-                               printInProt(QString("%1 NETCL: получено %2 байтов").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(answer.length()), "13", textStyle(), true);
-                               printInProt(QString("\t\t\tПолучено сообщ. volt"), "13", textStyle(), true);
-                               QStringList byteList;
-
-                               int count = 0;
-                               for (unsigned char byte: answer){
-                                   QString curByte;
-                                   if (count == 0) curByte.append("\t\t\t");
-                                   count += 1;
-                                   curByte.append(QString("0x") + QString("%1").arg(byte, 2, 16, QChar('0')).toUpper());
-                                   if (count >= 16){
-                                       curByte += "\n";
-                                       count = 0;
-                                   }
-                                   byteList << curByte;
-                               }
-                               byteList.first().prepend(" ");
-                               if (byteList.last().at(byteList.last().length()-1) == '\n') byteList.last().chop(1);
-                               printInProt(byteList.join(" "), "23", textStyle(), true);
-
-                               if (answer.length() != 8)
-                                   printInProt("Недопустимый размер сообщения от вольтметра", "13");
-                               if (answer[0] != char(0x01))
-                                   printInProt("Ответ от вольтметра получен на другую команду", "13");
-                               if (answer[1] != char(0x00))
-                                   printInProt(QString("Сбой в работе вольтметра: %1").arg(voltErrorCode[answer[1]]), "13");
-                               else
-                                this->voltReady = true;
-                           });
-
-                   QMetaObject::Connection con1 = QObject::connect(this, &directRunner::voltAnswer, [&loop, this](){
-                       loop.quit();
-                   });
-                   QMetaObject::Connection con2 = QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-
-                   voltSocket->write(cBA);
-                   voltSocket->flush();
-
-                   timer.start(6000);
-                   loop.exec();
-
-                   timer.stop();
-                   QObject::disconnect(con1);
-                   QObject::disconnect(con2);
-                   QObject::disconnect(con3);
-
-                   if (this->voltReady) {
-                       printInProt("Вольтметр готов к работе", "23", textStyle());
-                       QObject::connect(voltSocket, &QTcpSocket::readyRead, this, &directRunner::voltRR);
-                   } else {
-                       printInProt("Вольтметр недоступен", "13", textStyle());
-                   }
-               }
-            });
-        } else {
-            printInProt("Связь с вольтметром уже установлена!", "23", textStyle());
-        }
     }*/
+
+    if (socketCanal1->state() == QAbstractSocket::ConnectedState &&
+            socketCanal2->state() == QAbstractSocket::ConnectedState)
+        {
+            printInProt(QString("%1\tСвязь с НУ уже установлена")
+                        .arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")),
+                        "23", textStyle());
+            return;
+        }
+
+        printInProt(QString("%1\tУстанавливаем связь с НУ")
+                    .arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")),
+                    "23", textStyle());
+        printInProt(QString("**********************************************"), "30", textStyle());
+
+        int* attempts = new int(0);
+
+        QTimer* timer = new QTimer(this);
+        timer->setInterval(1000);
+
+        connect(timer, &QTimer::timeout, this, [=]() mutable {
+
+            (*attempts)++;
+
+            qDebug() << "Попытка подключения:" << *attempts;
+
+            // пробуем подключиться
+            if (socketCanal1->state() != QAbstractSocket::ConnectedState)
+                socketCanal1->connectToHost(ipAppcpServ, portAppcpWriteAndRead);
+
+            if (socketCanal2->state() != QAbstractSocket::ConnectedState)
+                socketCanal2->connectToHost(ipAppcpServ, portAppcpOnlyRead);
+
+            // если подключились — останавливаемся
+            if (socketCanal1->state() == QAbstractSocket::ConnectedState &&
+                socketCanal2->state() == QAbstractSocket::ConnectedState)
+            {
+                printInProt(QString("%1\tСвязь с НУ установлена")
+                            .arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")),
+                            "23", textStyle());
+
+                timer->stop();
+                timer->deleteLater();
+                delete attempts;
+                return;
+            }
+
+            // если прошло 5 секунд (5 попыток)
+            if (*attempts >= 5) {
+
+                if (socketCanal1->state() != QAbstractSocket::ConnectedState) {
+                    printInProt(QString("%1\tОшибка установки связи с НУ по каналу 1")
+                                .arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")),
+                                "13", textStyle());
+                }
+
+                if (socketCanal2->state() != QAbstractSocket::ConnectedState) {
+                    printInProt(QString("%1\tОшибка установки связи с НУ по каналу 2")
+                                .arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")),
+                                "13", textStyle());
+                }
+
+                timer->stop();
+                timer->deleteLater();
+                delete attempts;
+            }
+        });
+
+        timer->start();
 }
 
 void directRunner::disconnectNU(){
