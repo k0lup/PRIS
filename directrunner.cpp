@@ -2900,7 +2900,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         if (!ok){
             numDir = programs.last().metkaAddr.value(metka);
         }
-        if (dir.numDirect > 0) programs.last().numDir = numDir - 2;
+        if (dir.numDirect > 0 || dir.numDirect == -2) programs.last().numDir = numDir - 2;
         else programs.last().numDir = numDir - 1;
         //this->metka = metka;
         printMessage.append(dir.directive + " " + metka);
