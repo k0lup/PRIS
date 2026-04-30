@@ -697,6 +697,13 @@ MainWindow::MainWindow(QWidget *parent)
     this->rrParDB = QSqlDatabase::addDatabase("QSQLITE", "RR PAR");
 
     QString dbFilePath = paramOnValues.value("РР_ПАРАМЕТРЫ");
+    if (dbFilePath.isEmpty() || !QDir().mkpath(QFileInfo(dbFilePath).path())) {
+        QString errorMessage(QString("Не удалось создать путь к БД РР параметров!"));
+        QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
+        msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+        msgBox->exec();
+        QTimer::singleShot(1000, qApp, &QCoreApplication::quit);
+    }
     bool existRRParDb = QFile(dbFilePath).exists();
     if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE")){
         QString errorMessage(QString("Не удалось открыть БД РР параметров!"));
