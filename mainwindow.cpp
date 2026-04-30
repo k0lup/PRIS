@@ -2,6 +2,8 @@
 #include "widgetinfo.h"
 #include "commandline.h"
 #include <QProcess>
+#include <QCoreApplication>
+#include <QStringList>
 #include <QtSql>
 #include <QtConcurrent>
 #include <QThread>
@@ -49,7 +51,12 @@ MainWindow::MainWindow(QWidget *parent)
     //blockDirectRun.store(0);
     QDir dir(QDir::homePath());
     if (!dir.exists()) dir.mkpath(".");
-    QString filePath = QFileDialog::getOpenFileName(this, "Выберите файл конфигурации", "", "Файлы конфигурации (*.cfg)");
+    QString filePath;
+    if (QCoreApplication::arguments().size() > 1) {
+        filePath = QCoreApplication::arguments().at(1);
+    } else {
+        filePath = QFileDialog::getOpenFileName(this, "Выберите файл конфигурации", "", "Файлы конфигурации (*.cfg)");
+    }
     if (filePath.isEmpty() || QFileInfo(filePath).suffix().toUpper() != "CFG"){
         QString errorMessage(QString("Не удалось открыть файл конфигурации"));
         QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", errorMessage, QMessageBox::Ok);
