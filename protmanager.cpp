@@ -94,6 +94,7 @@ bool ProtManager::createProtocol(QString& errorText){
         masForWrite.append(codec->fromUnicode(param));
         writeFile.write(masForWrite);
         writeFile.flush();
+        writeFile.close();
         emit fileUpdate();
 
         writeRecord(QString("Раздел открыт %1 в %2\r\n").arg(QDateTime::currentDateTime().toString("dd.MM.yyyy")).arg(QDateTime::currentDateTime().toString("HH:mm:ss")), -1);
@@ -108,6 +109,7 @@ bool ProtManager::createProtocol(QString& errorText){
                 msgBox->exec();
                 return false;
             }
+            writeFile.close();
         }
         if (!this->isValidProt(errorText)) {
             qDebug() << "errorText create: " << errorText;
@@ -120,7 +122,13 @@ bool ProtManager::createProtocol(QString& errorText){
 
 bool ProtManager::writeRecord(QString param, const int atomType, int potok){
     if (!writeFile.isOpen()){
-        return false;
+        if (!writeFile.open(QIODevice::WriteOnly | QIODevice::Append)){
+            //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола\n" + writeFile.errorString() + "\n" + readFile.errorString());
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось открыть файл протокола\n");
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
+            return false;
+        }
     }
     if (atomType == -1){
         //param.append("\r\n");
@@ -149,6 +157,7 @@ bool ProtManager::writeRecord(QString param, const int atomType, int potok){
     masForWrite.append(codec->fromUnicode(param));
     writeFile.write(masForWrite);
     writeFile.flush();
+    writeFile.close();
     emit fileUpdate();
 
     return true;
@@ -156,7 +165,13 @@ bool ProtManager::writeRecord(QString param, const int atomType, int potok){
 
 bool ProtManager::saveFile(const QString& savePath, const QString& saveNUPath, QString& error){
     if (!writeFile.isOpen() || !nuFile.isOpen()){
-        return false;
+        if (!writeFile.open(QIODevice::WriteOnly | QIODevice::Append)){
+            //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола\n" + writeFile.errorString() + "\n" + readFile.errorString());
+            QMessageBox *msgBox = new QMessageBox(QMessageBox::Critical, "Ошибка!", "Не удалось открыть файл протокола\n");
+            msgBox->setWindowFlags(msgBox->windowFlags() | Qt::WindowStaysOnTopHint);
+            msgBox->exec();
+            return false;
+        }
     }
     writeFile.flush();
     writeFile.close();
