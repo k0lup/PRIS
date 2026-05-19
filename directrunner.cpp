@@ -201,6 +201,12 @@ void directRunner::startWork(){
 
     printStartMessage();
 
+    if (MainWindow::getCfgParam("ВН_ПРИБОР").toUpper() == "ДА") {
+        hasVoltMode = true;
+    } else {
+        hasVoltMode = false;
+    }
+
     if (MainWindow::getCfgParam("JSON_MESSAGE").toUpper() == "TRUE"){
         can2RR = true;
         jsonReceiver = new JsonReceiver(socketCanal2, this);
@@ -4255,6 +4261,9 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         printInProt(table, "0", textStyle());
         table.clear();
 
+        bool isCheckVolt{false};
+        bool isHaveVolt{false};
+
         for (int i = 1; i < numContacts.length(); ++i){
             cBA.append(char(0x02));
             cBA.append(char(1));
@@ -4292,18 +4301,19 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
             int diapVal;
 
-            /*if (ndops[i] == -1 || (int(ndops[i] * 100000) <= 0.05 * 100000 && int(vdops[i]*100000) <= 0.05 *100000)) diap = 0;
-            else if (ndops[i] <= 1000 && vdops[i] <= 1000) diap = 1;
-            else if (ndops[i] <= 5000 && vdops[i] <= 5000) diap = 2;
-            else diap = 3;*/
+
             if (ndops[i] == -1 || (ndops[i] <= 0.05)) diapVal = 0;
+            else if (ndops[i] <= 0.1) diapVal = 4;
+            else if (ndops[i] <= 1) diapVal = 5;
+            else if (ndops[i] <= 10) diapVal = 6;
+            else if (ndops[i] <= 100) diapVal = 7;
             else if (ndops[i] <= 1000.0) diapVal = 1;
             else if (ndops[i] <= 5000.0) diapVal = 2;
             else diapVal = 3;
 
             diap.append(diapVal);
 
-            if (diapVal == 0){
+            if (diapVal == 0) {
                 if (this->v100Mode) {
                     errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
                     errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd &lt; 1КОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
@@ -4325,6 +4335,27 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     goto end_metka;
                 }
             } else{
+                if (diapVal >= 4 && !hasVoltMode) {
+                    diapVal = 1;
+                }
+                if (diapVal >= 4) {
+                    if (!isCheckVolt) {
+                        isCheckVolt = true;
+                        QString volt_error_message;
+                        isHaveVolt = haveVolt(volt_error_message);
+                        if (!volt_error_message.isEmpty()) {
+                            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                            errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА\n"));
+                            errorMessage.append(volt_error_message);
+                            printInProt(errorMessage, "13", textStyle());
+                            return false;
+                        }
+                    }
+                    if (!isHaveVolt) {
+                        printInProt("\t\t\tВОЛЬТМЕТР НЕ ПОДКЛЮЧЕН. ЗАМЕРЫ ВЫПОЛНЯЮТСЯ С БОЛЬШОЙ ПОГРЕШНОСТЬЮ", "13");
+                        diapVal = 1;
+                    }
+                }
                 cBA.append(char(0x08));
                 cBA.append(char(diapVal));
                 cBA.append(char(v100Mode));
@@ -4618,7 +4649,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             if (param.length() > 2){
                 param[2].toFloat(&ok);
                 if (ok){
-                    nDop = param[2].toFloat();
+                    nDop = param[2].toDouble();
                     if (param.length() > 3){
                         param[3].toFloat(&ok);
                         if (ok){
@@ -4785,6 +4816,24 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     goto end_metka;
                 }
             } else{
+                if (diap >= 4 && !hasVoltMode) {
+                    diap = 1;
+                }
+                if (diap >= 4) {
+                    QString volt_error_message;
+                    if (!haveVolt(volt_error_message)) {
+                        if (!volt_error_message.isEmpty()) {
+                            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                            errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА:\n"));
+                            errorMessage.append(volt_error_message);
+                            printInProt(errorMessage, "13", textStyle());
+                            return false;
+                        } else {
+                            printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
+                            diap = 1;
+                        }
+                    }
+                }
                 /*if (diap >= 4 && !voltReady) {
                     if (hasVoltMode) printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
                     diap = 1;
@@ -4799,15 +4848,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                         }
                     }
                 }*/
-                if (diap >= 4 && !hasVoltMode) {
-                    diap = 1;
-                }
-                if (diap >=4) {
-                    printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
-                    /*
-                     * код для вольтметра
-                    */
-                } else {
+                {
                 c[0] = char(0x08);
                 c[1] = char(diap);
                 c[2] = char(v100Mode);
@@ -7029,14 +7070,43 @@ void directRunner::exitEvent() {
     return;
 }
 
-bool directRunner::haveVolt() {
-    if (!voltReady || voltSocket->state() != QAbstractSocket::ConnectedState)
-        return false;
+bool directRunner::haveVolt(QString& error_message) {
+    error_message.clear();
+    /*if (!voltReady || voltSocket->state() != QAbstractSocket::ConnectedState)
+        return false;*/
+
+    /*QByteArray cBA;
+    cBA.append(char(0x01)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00));*/
 
     QByteArray cBA;
-    cBA.append(char(0x01)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00));
+    cBA.clear();
+    cBA.append(char(0x66));
+    bool status{false};
+    sendMessageToNU(cBA.constData(), cBA.length(), &status);
+    if (!status) {
+        error_message = "\t\t\tПРОИЗОШЛА ОШИБКА В ПО НУ ПРИ ЗАПРОСЕ СТАТУСА ВОЛЬТМЕТРА";
+        return false;
+    }
+    if (respondNU.length() == 3 && (respondNU.at(2) == 0 || respondNU.at(2) == 1)){
+        //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
+        printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+        printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+    }
+    else if (respondNU.length() != 3){
+        error_message = "\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 3 байта)";
+        return false;
+    }
+    else {
+        error_message = "\t\t\t\tОшибка в аппаратуре НУ";
+        return false;
+    }
 
-    voltResponse.clear();
+    if (respondNU.at(2) == (0)) {
+        return false;
+    }
+
+
+    //voltResponse.clear();
 
 
 
@@ -7044,7 +7114,7 @@ bool directRunner::haveVolt() {
     //voltSocket->flush();
 
 
-    QEventLoop loop;
+    /*QEventLoop loop;
     QTimer timer;
     timer.setSingleShot(true);
 
@@ -7065,7 +7135,7 @@ bool directRunner::haveVolt() {
 
     timer.stop();
     QObject::disconnect(con1);
-    QObject::disconnect(con2);
+    QObject::disconnect(con2);*
 
     if (voltResponse.count() != 8) {
         qDebug() << "response : " << voltResponse;
@@ -7082,54 +7152,51 @@ bool directRunner::haveVolt() {
     if (voltResponse[1] != char(0x00)) {
         printInProt(QString("Ошибка выполнения операции в вольтметре: %1").arg(voltErrorCode[voltResponse[1]]), "13");
         return false;
-    }
+    }*/
 
-    QString errorMessage;
+    //QString errorMessage;
     QString printMessage;
 
 
     cBA.clear();
     cBA.append(char(0x0a));
-    bool status{false};
+    status = false;
     sendMessageToNU(cBA.constData(), cBA.length(), &status);
 
-    if (!status) return false;
+    if (!status) {
+        error_message = "\t\t\tОшибка при выполнении команды в НУ";
+        return false;
+    }
     if (respondNU.length() == 2 && respondNU.at(1) == 0){
         //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
         printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
         printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
     }
     else if (respondNU.length() != 2){
-        errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
-        printInProt(errorMessage, "13", textStyle());
+        error_message = "\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)";
         return false;
     }
     else if (respondNU.at(1) == -1){
-        errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
-        printInProt(errorMessage, "13", textStyle());
+        error_message = "\t\t\t\tОшибка в аппаратуре НУ";
         return false;
     }
     cBA.clear();
     printMessage.clear();
-    errorMessage.clear();
 
 
     cBA.clear();
     cBA.append(0x22).append(0x01);
     sendMessageToNU(cBA, cBA.length(), &status);
     if (!status){
-        errorMessage.append("Ошибка при выполнении команды в НУ");
-        printInProt(errorMessage, "13", textStyle());
+        error_message = "\t\t\tОшибка при выполнении команды в НУ";
         return false;
     }
     if (respondNU.length() != 2){
-        errorMessage.append("Ошибка в полученном ответе от НУ (ожидалось 2 байта)");
-        printInProt(errorMessage, "13", textStyle());
+        error_message = "\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)";
         return false;
     }
     if (respondNU.at(1) == -1){
-        errorMessage.append("Ошибка в аппаратуре НУ");
-        printInProt(errorMessage, "13", textStyle());
+        error_message = "\t\t\tОшибка в аппаратуре НУ";
         return false;
     }
     printMessage.append("Сопртивление 1 МОм подключено к корпусу");
@@ -7138,79 +7205,85 @@ bool directRunner::haveVolt() {
 
     cBA.clear();
     printMessage.clear();
-    errorMessage.clear();
     cBA.append(char(0x02));
     cBA.append(char(1));
     cBA.append(char(0x100));
     sendMessageToNU(cBA.constData(), cBA.length(), &status);
 
-    if (!status) return false;
+    if (!status) {
+        return false;
+    }
     if (respondNU.length() == 2 && respondNU.at(1) == 0){
         //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
         printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
         printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
     }
     else if (respondNU.length() != 2){
-        errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
-        printInProt(errorMessage, "13", textStyle());
+        error_message = "\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)";
         return false;
     }
     else if (respondNU.at(1) == -1){
-        errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
-        printInProt(errorMessage, "13", textStyle());
+        error_message = "\t\t\t\tОшибка в аппаратуре НУ";
         return false;
     }
     cBA.clear();
 
-    cBA.append(char(0x09));
+    cBA.append(char(0x08));
+    cBA.append(char(0x01));
+    cBA.append(char(v100Mode));
+    cBA.append(char(0x00));
     sendMessageToNU(cBA.constData(), cBA.length(), &status);
     float result{0};
-    if (!status) return false;
+    if (!status) {
+        error_message = "\t\t\tОшибка при выполнении команды в НУ";
+        return false;
+    }
     if (respondNU.length() == 2 + 4 && respondNU.at(1) == 0){
     //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
         printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
         QByteArray floatData = respondNU.mid(2);
         std::memcpy(&result, floatData.constData(), sizeof(result));
         if (std::isnan(result) || std::isinf(result)){
-            errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)");
-            printInProt(errorMessage, "13", textStyle());
+            error_message = "\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)";
             return false;
         }
     }
     cBA.clear();
     printMessage.clear();
-    errorMessage.clear();
 
     cBA.clear();
     cBA.append(char(0x0a));
     sendMessageToNU(cBA.constData(), cBA.length(), &status);
 
-    if (!status) return false;
+    if (!status) {
+        error_message = "\t\t\tОшибка при выполнении команды в НУ";
+        return false;
+    }
     if (respondNU.length() == 2 && respondNU.at(1) == 0){
         //printInProt("NET: получили ответ на ПСЦ", "30", textStyle());
         printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
         printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
     }
     else if (respondNU.length() != 2){
-        errorMessage.append("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)");
-        printInProt(errorMessage, "13", textStyle());
+        error_message = "\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)";
         return false;
     }
     else if (respondNU.at(1) == -1){
-        errorMessage.append("\t\t\t\tОшибка в аппаратуре НУ");
-        printInProt(errorMessage, "13", textStyle());
+        error_message = "\t\t\t\tОшибка в аппаратуре НУ";
         return false;
     }
+    cBA.clear();
+    printMessage.clear();
 
-    if (result >= 0 - 150 && result <= 0 + 150)
-        return true;
-    else
+    if (result >= 1000 - 150 && result <= 1000 + 150)
         return false;
+    else
+        return true;
 }
 
 double directRunner::getRWithVolt(int diap) {
-    if (!voltReady || voltSocket->state() != QAbstractSocket::ConnectedState)
-        return -1;
+    /*if (!voltReady || voltSocket->state() != QAbstractSocket::ConnectedState)
+        return -1;*/
 
     QByteArray cBA;
     cBA.append(char(0x01)).append(char(0x01)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00)).append(char(0x00));

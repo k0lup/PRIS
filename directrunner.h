@@ -184,7 +184,7 @@ private:
     bool hasVoltMode;
     bool voltReady;
 
-    bool haveVolt();
+    bool haveVolt(QString& error);
     double getRWithVolt(int diap);
     bool resetVolt();
 
