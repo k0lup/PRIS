@@ -767,6 +767,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     appcpParDB = QSqlDatabase::addDatabase("QSQLITE", "APPCP PAR");
     dbFilePath = paramValues.value("БАЗА_ДАННЫХ");
+    qDebug() << dbFilePath;
     ipAppcpServ = paramValues.value("СЕРВЕР_АППЦП");
 
     if (dbFilePath.isEmpty() || (QFileInfo(dbFilePath).suffix().toUpper() != "SQLITE") || !QFile(dbFilePath).exists()){
@@ -2276,11 +2277,30 @@ bool MainWindow::readConfigFile(const QString& filePath, QMap<QString, QString>&
     while (!in.atEnd()){
         QString line = in.readLine();
 
+        int pos = line.indexOf("//");
+        if (pos != -1) {
+            line.truncate(pos);
+        }
+
         if (!line.contains(QChar('='))) continue;
 
         QStringList param = line.split("=");
+        if (param.count() != 2) {
+            error = QString("Ошибка формата в строке '%1' - Использовано несколько символов '='").arg(line);
+            return false;
+        }
+        param[0] = param[0].trimmed();
+        param[1] = param[1].trimmed();
         if (paramMap.contains(param[0]) && param[0] != "ПРОГРАММЫ"){
             error = QString("ПАРАМЕТР ") + param[0] + " встречен в файле " + filePath + " повторно!";
+            return false;
+        }
+        if (param[0].isEmpty()) {
+            error = QString("НЕДОПУСТИМО ИСПОЛЬЗОВАТЬ ПУСТОЙ ПАРАМЕТР: %1").arg(line);
+            return false;
+        }
+        if (param[1].isEmpty()) {
+            error = QString("НЕДОПУСТИМО ИСПОЛЬЗОВАТЬ ПУСТОЕ ЗНАЧЕНИЕ ПАРАМЕТРА: %1").arg(line);
             return false;
         }
         if (param[1].contains("//")){
