@@ -9,6 +9,35 @@
 #include "constvalues.h"
 #include "rrparam.h"
 
+static QString detectEncodingByHeader(QFile &file)
+{
+    if (!file.isOpen()) {
+        return QString();
+    }
+
+    const qint64 oldPos = file.pos();
+
+    file.seek(0);
+    QByteArray header = file.read(64);
+
+    file.seek(oldPos);
+
+    const QByteArray cp1251Header =
+            QByteArray::fromHex("CF21CACECDD2D0CECBDCCDC0DF20D1D3CCCCC03D");
+
+    const QByteArray utf8Header =
+            QByteArray::fromHex("D09F21D09AD09ED09DD0A2D0A0D09ED09BD0ACD09DD090D0AF20D0A1D0A3D09CD09CD0903D");
+
+    if (header.startsWith(cp1251Header)) {
+        return "Windows-1251";
+    }
+
+    if (header.startsWith(utf8Header)) {
+        return "UTF-8";
+    }
+
+    return QString();
+}
 
 struct FileHeaderInfo
 {
@@ -133,7 +162,9 @@ qint32 CirSum(qint32 x,qint32 y)
 
 QString getKS(QByteArray readData, bool needRemoveKS = true){
     //выполняем только в ОС Windows
-    readData.replace(char(0x0A), QByteArray().append(char(0x0D)).append(char(0x0A)));
+    readData.replace("\r\n", "\n");
+    readData.replace('\r', '\n');
+    readData.replace('\n', "\r\n");
     if (needRemoveKS){
         //добавить проверку на ОС и на кодировку файла
         readData = readData.mid(31);
@@ -1674,9 +1705,19 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             qDebug() << "First line:" << info.firstLine;
             qDebug() << "Checksum:" << info.checksum;
         }
+        QString encoding = detectEncodingByHeader(file);
+        if (encoding.isEmpty()) {
+            if (dir.numDirect > -1){
+                errorMessage.append("\t#" + numDirect + "\t\t");
+            } else errorMessage.append("\t\t\t");
+            errorMessage.append("ОШИБКА ОПРЕДЕЛЕНИЯ КОДИРОВКИ ФАЙЛА!");
+            {
+                printInProt(errorMessage, "13", textStyle());
+            }
+        }
 
-        QTextStream in(&file);
-        QTextCodec *codec = QTextCodec::codecForName(info.encoding.toUtf8());
+        //QTextCodec *codec = QTextCodec::codecForName(info.encoding.toUtf8());
+        QTextCodec *codec = QTextCodec::codecForName(encoding.toLatin1());
         if (!codec) {
             if (dir.numDirect > -1){
                 errorMessage.append("\t#" + numDirect + "\t\t");
@@ -1686,7 +1727,9 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 printInProt(errorMessage, "13", textStyle());
             }
         }
+        QTextStream in(&file);
         in.setCodec(codec);
+        file.seek(0);
         QString KS;
         QStringList programText;
         KS = in.readLine();
@@ -1786,6 +1829,17 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         program.numDir = -1;
         program.autoRun = false;
         program.blockRun = false;
+        if (program.directList.count() <= 2) {
+            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            if (dir.numDirect > -1){
+                errorMessage.append("\t#" + numDirect + "\t\t");
+            } else errorMessage.append("\t\t\t");
+            errorMessage.append("В ЦИКЛОГРАММЕ СЛИШКОМ МАЛО ДИРЕКТИВ - МЕНЬШЕ ДВУХ");
+            {
+                printInProt(errorMessage, "13", textStyle());
+            }
+            return false;
+        }
         for (int prDirNum = 0; prDirNum < program.directList.count(); ++prDirNum){
             if (!program.directList[prDirNum]->metka.isEmpty()){
                 if (program.metkaAddr.contains(program.directList[prDirNum]->metka)){

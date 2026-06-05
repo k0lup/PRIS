@@ -1,6 +1,37 @@
 #include "directparser.h"
 #include <QFile>
 #include <QtWidgets>
+#include <QTextCodec>
+
+static QString detectEncodingByHeader(QFile &file)
+{
+    if (!file.isOpen()) {
+        return QString();
+    }
+
+    const qint64 oldPos = file.pos();
+
+    file.seek(0);
+    QByteArray header = file.read(64);
+
+    file.seek(oldPos);
+
+    const QByteArray cp1251Header =
+        QByteArray::fromHex("CF21CACECDD2D0CECBDCCDC0DF20D1D3CCCCC03D");
+
+    const QByteArray utf8Header =
+        QByteArray::fromHex("D09F21D09AD09ED09DD0A2D0A0D09ED09BD0ACD09DD090D0AF20D0A1D0A3D09CD09CD0903D");
+
+    if (header.startsWith(cp1251Header)) {
+        return "Windows-1251";
+    }
+
+    if (header.startsWith(utf8Header)) {
+        return "UTF-8";
+    }
+
+    return QString();
+}
 
 DirectParser::DirectParser()
 {
@@ -24,7 +55,16 @@ const QList<DirectParser::Direct*>& DirectParser::parseFile(const QString& fileN
         return *(new QList<DirectParser::Direct*>());
     }
 
+    QString encoding = detectEncodingByHeader(file);
+    //QTextCodec *codec = QTextCodec::codecForName(info.encoding.toUtf8());
+    QTextCodec *codec = QTextCodec::codecForName(encoding.toLatin1());
+    if (!codec) {
+        qDebug() << "Codding error";
+        return *(new QList<DirectParser::Direct*>());
+    }
     QTextStream in(&file);
+    in.setCodec(codec);
+    file.seek(0);
     //int numDir = 0;
     QString text = "";
     while (!in.atEnd()){
