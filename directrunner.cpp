@@ -4192,7 +4192,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                         vdops[i - 1] = param[0].toDouble();
                         if (ndops[i - 1] > vdops[i - 1]){
                             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                            errorMessage.append(QString("Нижний допуск не должен превышвать верхний (точка: %1)").arg(points.last()));
+                            errorMessage.append(QString("Нижний допуск не должен превышать верхний (точка: %1)").arg(points.last()));
                             printInProt(errorMessage, "13", textStyle());
                             return false;
                         }
@@ -4236,6 +4236,39 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 }
             }
         }
+
+        bool needVoltRequest{false};
+        bool isHaveVolt{false};
+
+        for (int i = 1; i < ndops.length(); ++i) {
+            int diapVal{-1};
+            if (ndops[i] == -1 || (ndops[i] <= 0.05)) diapVal = 0;
+            else if (ndops[i] <= 0.1) diapVal = 4;
+            else if (ndops[i] <= 1) diapVal = 5;
+            else if (ndops[i] <= 10) diapVal = 6;
+            else if (ndops[i] <= 100) diapVal = 7;
+            else if (ndops[i] <= 1000.0) diapVal = 1;
+            else if (ndops[i] <= 5000.0) diapVal = 2;
+            else diapVal = 3;
+
+            if (diapVal >= 4) {
+                needVoltRequest = true;
+                break;
+            }
+        }
+
+        if (needVoltRequest) {
+            QString volt_error_message;
+            isHaveVolt = haveVolt(volt_error_message);
+            if (!volt_error_message.isEmpty()) {
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА\n"));
+                errorMessage.append(volt_error_message);
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+        }
+
 
         QByteArray cBA;
         cBA.clear();
@@ -4315,10 +4348,10 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         printInProt(table, "0", textStyle());
         table.clear();
 
-        bool isCheckVolt{false};
-        bool isHaveVolt{false};
-
         for (int i = 1; i < numContacts.length(); ++i){
+            // begin
+
+
             cBA.append(char(0x02));
             cBA.append(char(1));
             cBA.append(char(numContacts[i]));
@@ -4352,6 +4385,8 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 return false;
             }
             cBA.clear();
+
+            //end
 
             int diapVal;
 
@@ -4393,18 +4428,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     diapVal = 1;
                 }
                 if (diapVal >= 4) {
-                    if (!isCheckVolt) {
-                        isCheckVolt = true;
-                        QString volt_error_message;
-                        isHaveVolt = haveVolt(volt_error_message);
-                        if (!volt_error_message.isEmpty()) {
-                            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                            errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА\n"));
-                            errorMessage.append(volt_error_message);
-                            printInProt(errorMessage, "13", textStyle());
-                            return false;
-                        }
-                    }
                     if (!isHaveVolt) {
                         printInProt("\t\t\tВОЛЬТМЕТР НЕ ПОДКЛЮЧЕН. ЗАМЕРЫ ВЫПОЛНЯЮТСЯ С БОЛЬШОЙ ПОГРЕШНОСТЬЮ", "13");
                         diapVal = 1;
@@ -4739,6 +4762,25 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             else if (nDop <= 5000.0) diap = 2;
             else diap = 3;
 
+            if (diap >= 4 && !hasVoltMode) {
+                diap = 1;
+            }
+            if (diap >= 4) {
+                QString volt_error_message;
+                if (!haveVolt(volt_error_message)) {
+                    if (!volt_error_message.isEmpty()) {
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА:\n"));
+                        errorMessage.append(volt_error_message);
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    } else {
+                        printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
+                        diap = 1;
+                    }
+                }
+            }
+
             float result{0};
 
             //bool voltReady = false;
@@ -4870,24 +4912,6 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     goto end_metka;
                 }
             } else{
-                if (diap >= 4 && !hasVoltMode) {
-                    diap = 1;
-                }
-                if (diap >= 4) {
-                    QString volt_error_message;
-                    if (!haveVolt(volt_error_message)) {
-                        if (!volt_error_message.isEmpty()) {
-                            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                            errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА:\n"));
-                            errorMessage.append(volt_error_message);
-                            printInProt(errorMessage, "13", textStyle());
-                            return false;
-                        } else {
-                            printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
-                            diap = 1;
-                        }
-                    }
-                }
                 /*if (diap >= 4 && !voltReady) {
                     if (hasVoltMode) printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
                     diap = 1;
@@ -5765,7 +5789,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                             vdops[i - 1] = param[0].toDouble();
                             if (ndops[i - 1] > vdops[i - 1]){
                                 errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                                errorMessage.append(QString("Нижний допуск не должен превышвать верхний (точка: %1)").arg(points.last()));
+                                errorMessage.append(QString("Нижний допуск не должен превышать верхний (точка: %1)").arg(points.last()));
                                 printInProt(errorMessage, "13", textStyle());
                                 return false;
                             }
@@ -7261,7 +7285,7 @@ bool directRunner::haveVolt(QString& error_message) {
     printMessage.clear();
     cBA.append(char(0x02));
     cBA.append(char(1));
-    cBA.append(char(0x100));
+    cBA.append(char(0x64));
     sendMessageToNU(cBA.constData(), cBA.length(), &status);
 
     if (!status) {

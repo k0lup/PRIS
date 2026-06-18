@@ -14,7 +14,8 @@ const QMap<unsigned char, QString> constValues::NUDirectives =
                                 {0x20, "ПУЧОК"},
                                 {0x21, "СОПР_П"},
                                 {0x22, "ПОДК_1М"},
-                                {0x23, "А_КОНТР"}
+                                {0x23, "А_КОНТР"},
+                                {0x66, "ПРОВЕРКА_ВОЛЬТМЕТРА"}
                             });
 
 QAtomicInt constValues::isImitMode = 0;
