@@ -4946,7 +4946,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             }
             }
             if (!status) return false;
-            if (diap < 4) {
+
             if (respondNU.length() == 2 + 4 && respondNU.at(1) == 0){
                 //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
                 printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(c[0])), "30", textStyle(), true, false);
@@ -4973,7 +4973,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 printInProt(errorMessage, "13", textStyle());
                 return false;
             }
-            }
+
 
             QString rrParName;
             if (param.length() > 2){
