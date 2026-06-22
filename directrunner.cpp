@@ -4242,13 +4242,13 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
         for (int i = 1; i < ndops.length(); ++i) {
             int diapVal{-1};
-            if (ndops[i] == -1 || (ndops[i] <= 0.05)) diapVal = 0;
-            else if (ndops[i] <= 0.1) diapVal = 4;
-            else if (ndops[i] <= 1) diapVal = 5;
-            else if (ndops[i] <= 10) diapVal = 6;
-            else if (ndops[i] <= 100) diapVal = 7;
-            else if (ndops[i] <= 1000.0) diapVal = 1;
-            else if (ndops[i] <= 5000.0) diapVal = 2;
+            if (ndops[i] == -1 || (ndops[i] < 0.05)) diapVal = 0;
+            else if (ndops[i] < 0.1) diapVal = 4;
+            else if (ndops[i] < 1) diapVal = 5;
+            else if (ndops[i] < 10) diapVal = 6;
+            else if (ndops[i] < 100) diapVal = 7;
+            else if (ndops[i] < 1000.0) diapVal = 1;
+            else if (ndops[i] < 5000.0) diapVal = 2;
             else diapVal = 3;
 
             if (diapVal >= 4) {
@@ -4753,13 +4753,13 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             else if (nDop <= 1000 && vDop <= 1000) diap = 1;
             else if (nDop <= 5000 && vDop <= 5000) diap = 2;
             else diap = 3;*/
-            if (nDop == -1 || (nDop <= 0.05)) diap = 0;
-            else if (nDop <= 0.1) diap = 4;
-            else if (nDop <= 1) diap = 5;
-            else if (nDop <= 10) diap = 6;
-            else if (nDop <= 100) diap = 7;
-            else if (nDop <= 1000.0) diap = 1;
-            else if (nDop <= 5000.0) diap = 2;
+            if (nDop == -1 || (nDop < 0.05)) diap = 0;
+            else if (nDop < 0.1) diap = 4;
+            else if (nDop < 1) diap = 5;
+            else if (nDop < 10) diap = 6;
+            else if (nDop < 100) diap = 7;
+            else if (nDop < 1000.0) diap = 1;
+            else if (nDop < 5000.0) diap = 2;
             else diap = 3;
 
             if (diap >= 4 && !hasVoltMode) {
@@ -5697,7 +5697,62 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         printMessage = "";
         break;
     }
-    case (DirectParser::TypeDirect::UV) : qDebug() << "пока не реализовано"; break;
+    case (DirectParser::TypeDirect::UV) : {
+        //qDebug() << "пока не реализовано"; break;
+
+        if (dir.testParamDirect.length() != 1 || dir.testParamDirect[0][1].length() != 1) {
+            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            errorMessage.append(QString("\t\t\tНедопустимое количество параметров директивы %1").arg(dir.directive));
+            printInProt(errorMessage, "13", textStyle());
+            return false;
+        }
+
+        if (dir.testParamDirect[0][1][0] != "ВН_ПР") {
+            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            errorMessage.append(QString("\t\t\tНедопустимый параметр директивы %1. Разрешено использовать только ВН_ПР").arg(dir.directive));
+            printInProt(errorMessage, "13", textStyle());
+            return false;
+        }
+        if (socketCanal1->state() != QAbstractSocket::ConnectedState || socketCanal2->state() != QAbstractSocket::ConnectedState){
+            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            errorMessage.append("\t\t\tНЕТ СВЯЗИ С НУ");
+            printInProt(errorMessage, "13", textStyle());
+            return false;
+        }
+
+        bool res{false};
+        if (constValues::haveVnPr.load() == 1) {
+            QString error_text;
+            res = haveVolt(&error_text);
+            if (!error_text.isEmpty()) {
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append(error_text);
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+        }
+
+        if (res) {
+            printMessage.append("\n\t\t\tВН_ПР ОБНАРУЖЕН!");
+        } else {
+            printMessage.append("\n\t\t\tВН_ПР НЕ ОБНАРУЖЕН");
+        }
+
+        if (constValues::isImitMode.load() != 1 && !res){
+            this->GL_NORM_STATUS = false;
+            //printMessage.prepend("<span style='color: red; white-space: pre;'>");
+            //printMessage.append("</span>");
+        } else {
+            GL_NORM_STATUS = true;
+        }
+        //protocol->append(printMessage);
+        {
+            if (GL_NORM_STATUS) printInProt(printMessage, "0", textStyle());
+            else printInProt(printMessage, "13", textStyle());
+        }
+        printMessage = "";
+        break;
+    }
     case (DirectParser::TypeDirect::PNC) : {
             if (dir.testParamDirect.count() > 101){
                 errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
@@ -7328,6 +7383,7 @@ bool directRunner::haveVolt(QString& error_message) {
     }
     cBA.clear();
     printMessage.clear();
+    printInProt(QString("%1 Результат замера: %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(result), "30", textStyle(), true, false);
 
     cBA.clear();
     cBA.append(char(0x0a));
@@ -7353,10 +7409,10 @@ bool directRunner::haveVolt(QString& error_message) {
     cBA.clear();
     printMessage.clear();
 
-    if (result >= 1000 - 150 && result <= 1000 + 150)
-        return false;
-    else
+    if (result >= 0 - 150 && result <= 0 + 150)
         return true;
+    else
+        return false;
 }
 
 double directRunner::getRWithVolt(int diap) {

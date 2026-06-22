@@ -23,6 +23,7 @@ namespace constValues {
     extern const QMap<QString, QString> colorTranslate;
     extern const QMap<unsigned char, QString> NUDirectives;
     extern QAtomicInt isImitMode;
+    extern QAtomicInt haveVnPr;
     extern QAtomicInt isNeedCheckKS;
 }
 /*

@@ -19,6 +19,7 @@ const QMap<unsigned char, QString> constValues::NUDirectives =
                             });
 
 QAtomicInt constValues::isImitMode = 0;
+QAtomicInt constValues::haveVnPr = 0;
 
 QLocalSocket *timeControlSocket = nullptr;
 

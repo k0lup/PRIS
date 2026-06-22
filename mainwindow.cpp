@@ -582,6 +582,12 @@ MainWindow::MainWindow(QWidget *parent)
         constValues::isImitMode.store(0);
     }
 
+    if (paramValues.contains("ВН_ПРИБОР") && paramValues.value("ВН_ПРИБОР").toUpper() == "ДА") {
+        constValues::haveVnPr.store(1);
+    } else {
+        constValues::haveVnPr.store(0);
+    }
+
     QObject::connect(printNorm, &QAction::triggered, this, [printNorm](){
         if (printNorm->isChecked()) {
             constValues::isImitMode.store(1);
