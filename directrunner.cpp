@@ -3600,6 +3600,25 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
         printMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" "));
         printInProt(printMessage, "0", textStyle());
+
+        if (hasVoltMode) {
+            QString volt_error_message;
+            bool isHaveVolt = haveVolt(volt_error_message);
+            if (!volt_error_message.isEmpty()) {
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА\n"));
+                errorMessage.append(volt_error_message);
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+            if (isHaveVolt) {
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append(QString("\t\t\tВОЛЬТМЕТР ПОДКЛЮЧЕН! ЗАМЕРЫ НА АППЦП-Р ЗАПРЕЩЕНЫ"));
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+        }
+
         char c[4];// = [0x0D, 0x01];
         c[0] = char(0x0A);
         bool status;
@@ -4238,12 +4257,13 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         }
 
         bool needVoltRequest{false};
+        needVoltRequest = hasVoltMode;
         bool isHaveVolt{false};
 
-        for (int i = 1; i < ndops.length(); ++i) {
+        /*for (int i = 1; i < ndops.length(); ++i) {
             int diapVal{-1};
             if (ndops[i] == -1 || (ndops[i] < 0.05)) diapVal = 0;
-            else if (ndops[i] < 0.1) diapVal = 4;
+            //else if (ndops[i] < 0.1) diapVal = 4;
             else if (ndops[i] < 1) diapVal = 5;
             else if (ndops[i] < 10) diapVal = 6;
             else if (ndops[i] < 100) diapVal = 7;
@@ -4255,7 +4275,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 needVoltRequest = true;
                 break;
             }
-        }
+        }*/
 
         if (needVoltRequest) {
             QString volt_error_message;
@@ -4392,7 +4412,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
 
             if (ndops[i] == -1 || (ndops[i] <= 0.05)) diapVal = 0;
-            else if (ndops[i] <= 0.1) diapVal = 4;
+            //else if (ndops[i] <= 0.1) diapVal = 4;
             else if (ndops[i] <= 1) diapVal = 5;
             else if (ndops[i] <= 10) diapVal = 6;
             else if (ndops[i] <= 100) diapVal = 7;
@@ -4402,10 +4422,24 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
             diap.append(diapVal);
 
+            if (diapVal < 4 && isHaveVolt) {
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append(QString("\t\t\tВОЛЬТМЕТР ПОДКЛЮЧЕН! ЗАМЕРЫ НА АППЦП-Р ЗАПРЕЩЕНЫ"));
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+
+            if (diapVal > 4 && v100Mode) {
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd &lt; 1МОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+
             if (diapVal == 0) {
                 if (this->v100Mode) {
                     errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                    errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd &lt; 1КОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
+                    errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd &lt; 1МОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
                     printInProt(errorMessage, "13", textStyle());
                     return false;
                 }
@@ -4431,8 +4465,47 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     if (!isHaveVolt) {
                         printInProt("\t\t\tВОЛЬТМЕТР НЕ ПОДКЛЮЧЕН. ЗАМЕРЫ ВЫПОЛНЯЮТСЯ С БОЛЬШОЙ ПОГРЕШНОСТЬЮ", "13");
                         diapVal = 1;
+                    } else {
+                        cBA.clear();
+                        bool status{false};
+                        cBA.append(char(0x66));
+                        sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                        if (!status) {
+                            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                            errorMessage.append(QString("\t\t\tПРОИЗОШЛА ОШИБКА В ПО НУ ПРИ ЗАПРОСЕ СТАТУСА ВОЛЬТМЕТРА"));
+                            printInProt(errorMessage, "13", textStyle());
+                            return false;
+                        }
+                        if (respondNU.length() == 3 && (respondNU.at(2) == 0 || respondNU.at(2) == 1)){
+                            //printInProt("NET: получили ответ на ПСЦ_Р", "30", textStyle());
+                            printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+                            printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+                        }
+                        else if (respondNU.length() != 3){
+                            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                            errorMessage.append(QString("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 3 байта)"));
+                            printInProt(errorMessage, "13", textStyle());
+                            return false;
+                        }
+                        else {
+                            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                            errorMessage.append(QString("\t\t\t\tОшибка в аппаратуре НУ"));
+                            printInProt(errorMessage, "13", textStyle());
+                            return false;
+                        }
+
+                        if (respondNU.at(2) == (0)) {
+                            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                            errorMessage.append(QString("\t\t\t\tНЕТ СВЯЗИ С ВОЛЬТМЕТРОМ!"));
+                            printInProt(errorMessage, "13", textStyle());
+                            return false;
+                        }
                     }
                 }
+                if (diapVal >= 4) {
+                    printInProt("\t\t\tЗАМЕР ВЫПОЛНЯЕТСЯ С ВОЛЬТМЕТРОМ", "23");
+                }
+                cBA.clear();
                 cBA.append(char(0x08));
                 cBA.append(char(diapVal));
                 cBA.append(char(v100Mode));
@@ -4754,7 +4827,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             else if (nDop <= 5000 && vDop <= 5000) diap = 2;
             else diap = 3;*/
             if (nDop == -1 || (nDop < 0.05)) diap = 0;
-            else if (nDop < 0.1) diap = 4;
+            //else if (nDop < 0.1) diap = 4;
             else if (nDop < 1) diap = 5;
             else if (nDop < 10) diap = 6;
             else if (nDop < 100) diap = 7;
@@ -4762,23 +4835,82 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             else if (nDop < 5000.0) diap = 2;
             else diap = 3;
 
+            bool isHaveVolt{false};
+            if (hasVoltMode) {
+                QString volt_error_message;
+                isHaveVolt = haveVolt(volt_error_message);
+                if (!volt_error_message.isEmpty()) {
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА\n"));
+                    errorMessage.append(volt_error_message);
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+            }
+
+            if (isHaveVolt && diap < 4) {
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append(QString("\t\t\tВОЛЬТМЕТР ПОДКЛЮЧЕН! ЗАМЕРЫ НА АППЦП-Р ЗАПРЕЩЕНЫ"));
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+
+            if (diap > 4 && v100Mode) {
+                errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append(QString("\t\t\tДИРЕКТИВА НЕВЫПОЛНИМА nd &lt; 1МОм ЗАМЕР НЕВОЗМОЖЕН ПРИ 100В"));
+                printInProt(errorMessage, "13", textStyle());
+                return false;
+            }
+
             if (diap >= 4 && !hasVoltMode) {
                 diap = 1;
             }
+
+
+
             if (diap >= 4) {
-                QString volt_error_message;
-                if (!haveVolt(volt_error_message)) {
-                    if (!volt_error_message.isEmpty()) {
+                if (!isHaveVolt) {
+                    printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
+                    diap = 1;
+                } else {
+                    QByteArray cBA;
+                    cBA.clear();
+                    bool status{false};
+                    cBA.append(char(0x66));
+                    sendMessageToNU(cBA.constData(), cBA.length(), &status);
+                    if (!status) {
                         errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-                        errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА:\n"));
-                        errorMessage.append(volt_error_message);
+                        errorMessage.append(QString("\t\t\tПРОИЗОШЛА ОШИБКА В ПО НУ ПРИ ЗАПРОСЕ СТАТУСА ВОЛЬТМЕТРА"));
                         printInProt(errorMessage, "13", textStyle());
                         return false;
-                    } else {
-                        printInProt("\t\t\tВольтметр не подключен. Замеры выполняются с большой погрешностью", "13");
-                        diap = 1;
+                    }
+                    if (respondNU.length() == 3 && (respondNU.at(2) == 0 || respondNU.at(2) == 1)){
+                        printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+                        printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+                    }
+                    else if (respondNU.length() != 3){
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append(QString("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 3 байта)"));
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    else {
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append(QString("\t\t\t\tОшибка в аппаратуре НУ"));
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    if (respondNU.at(2) == (0)) {
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append(QString("\t\t\t\tНЕТ СВЯЗИ С ВОЛЬТМЕТРОМ!"));
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
                     }
                 }
+            }
+
+            if (diap > 4) {
+                printInProt("\t\t\tЗАМЕР ВЫПОЛНЯЕТСЯ С ВОЛЬТМЕТРОМ", "23");
             }
 
             float result{0};
@@ -5723,13 +5855,47 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         bool res{false};
         if (constValues::haveVnPr.load() == 1) {
             QString error_text;
-            res = haveVolt(&error_text);
+            res = haveVolt(error_text);
             if (!error_text.isEmpty()) {
                 errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                errorMessage.append("\t\t\tПРОИЗОШЛА ОШИБКА ПРИ ЗАПРОСЕ СТАТУСА ВОЛЬТМЕТРА");
                 errorMessage.append(error_text);
                 printInProt(errorMessage, "13", textStyle());
                 return false;
             }
+        }
+
+        QByteArray cBA;
+        cBA.clear();
+        bool status{false};
+        cBA.append(char(0x66));
+        sendMessageToNU(cBA.constData(), cBA.length(), &status);
+        if (!status) {
+            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            errorMessage.append(QString("\t\t\tПРОИЗОШЛА ОШИБКА В ПО НУ ПРИ ЗАПРОСЕ СТАТУСА ВОЛЬТМЕТРА"));
+            printInProt(errorMessage, "13", textStyle());
+            return false;
+        }
+        if (respondNU.length() == 3 && (respondNU.at(2) == 0 || respondNU.at(2) == 1)){
+            printInProt(QString("%1 NET: получили ответ на %2").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(constValues::NUDirectives.value(cBA[0])), "30", textStyle(), true, false);
+            printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])), "35", textStyle(), true, true);
+        } else if (respondNU.length() != 3){
+            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            errorMessage.append(QString("\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 3 байта)"));
+            printInProt(errorMessage, "13", textStyle());
+            return false;
+        } else {
+            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            errorMessage.append(QString("\t\t\t\tОшибка в аппаратуре НУ"));
+            printInProt(errorMessage, "13", textStyle());
+            return false;
+        }
+        if (respondNU.at(2) == (0)) {
+            res = false;
+            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            errorMessage.append(QString("\t\t\t\tНЕТ СВЯЗИ С ВОЛЬТМЕТРОМ!"));
+            printInProt(errorMessage, "13", textStyle());
+            return false;
         }
 
         if (res) {
@@ -5886,6 +6052,24 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                         printInProt(errorMessage, "13", textStyle());
                         return false;
                     }
+                }
+            }
+
+            if (hasVoltMode) {
+                QString volt_error_message;
+                bool isHaveVolt = haveVolt(volt_error_message);
+                if (!volt_error_message.isEmpty()) {
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА\n"));
+                    errorMessage.append(volt_error_message);
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
+                }
+                if (isHaveVolt) {
+                    errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                    errorMessage.append(QString("\t\t\tВОЛЬТМЕТР ПОДКЛЮЧЕН! ЗАМЕРЫ НА АППЦП-Р ЗАПРЕЩЕНЫ"));
+                    printInProt(errorMessage, "13", textStyle());
+                    return false;
                 }
             }
 
@@ -6337,6 +6521,25 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
                 printMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" "));
                 printInProt(printMessage, "0", textStyle());
+
+                if (hasVoltMode) {
+                    QString volt_error_message;
+                    bool isHaveVolt = haveVolt(volt_error_message);
+                    if (!volt_error_message.isEmpty()) {
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append(QString("\t\t\tОШИБКА ПРИ ОБНАРУЖЕНИИ ВОЛЬТМЕТРА\n"));
+                        errorMessage.append(volt_error_message);
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                    if (isHaveVolt) {
+                        errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+                        errorMessage.append(QString("\t\t\tВОЛЬТМЕТР ПОДКЛЮЧЕН! ЗАМЕРЫ НА АППЦП-Р ЗАПРЕЩЕНЫ"));
+                        printInProt(errorMessage, "13", textStyle());
+                        return false;
+                    }
+                }
+
                 char c[4];// = [0x0D, 0x01];
                 c[0] = char(0x0A);
                 bool status;
@@ -7213,8 +7416,8 @@ bool directRunner::haveVolt(QString& error_message) {
 
     QByteArray cBA;
     cBA.clear();
-    cBA.append(char(0x66));
     bool status{false};
+    /*cBA.append(char(0x66));
     sendMessageToNU(cBA.constData(), cBA.length(), &status);
     if (!status) {
         error_message = "\t\t\tПРОИЗОШЛА ОШИБКА В ПО НУ ПРИ ЗАПРОСЕ СТАТУСА ВОЛЬТМЕТРА";
@@ -7236,7 +7439,7 @@ bool directRunner::haveVolt(QString& error_message) {
 
     if (respondNU.at(2) == (0)) {
         return false;
-    }
+    }*/
 
 
     //voltResponse.clear();
