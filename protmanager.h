@@ -1,6 +1,7 @@
 #ifndef PROTMANAGER_H
 #define PROTMANAGER_H
 #include <QtWidgets>
+#include <QRecursiveMutex>
 
 extern QTextCodec *codec;
 
@@ -30,6 +31,7 @@ signals:
     void fileUpdate();
     void fileSaved();
 private:
+    QRecursiveMutex m_mutex;
     explicit ProtManager(QObject *parent = nullptr);
     ~ProtManager();
     QFile writeFile;

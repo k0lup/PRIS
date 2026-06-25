@@ -3,6 +3,9 @@
 #include "mainwindow.h"
 #include "directrunner.h"
 #include "constvalues.h"
+
+#include <QMutexLocker>
+
 const int protV = 1;
 const QByteArray beginStr = QByteArray().append(char(0xFF)).append(char(0xFF)).append(char(0xFF)).append(char(0xFF)).append(char(0x00)).append(char(0x00)).append(0x20).append(0x20);
 QTextCodec *codec = QTextCodec::codecForName("Windows-1251");
@@ -13,6 +16,7 @@ ProtManager::ProtManager(QObject *parent) : QObject(parent), activeProt(false), 
 }
 
 bool ProtManager::createProtocol(QString& errorText){
+    QMutexLocker locker(&m_mutex);
     qDebug() << "createProtocol";
     QString tempDir = /*QStandardPaths::writableLocation(QStandardPaths::TempLocation);*/ MainWindow::getOnParam("ПРОТОКОЛ");
     QString filePath = QDir(tempDir).filePath("prot.PCP");
@@ -121,6 +125,7 @@ bool ProtManager::createProtocol(QString& errorText){
 }
 
 bool ProtManager::writeRecord(QString param, const int atomType, int potok){
+    QMutexLocker locker(&m_mutex);
     if (!writeFile.isOpen()){
         if (!writeFile.open(QIODevice::WriteOnly | QIODevice::Append)){
             //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола\n" + writeFile.errorString() + "\n" + readFile.errorString());
@@ -164,6 +169,7 @@ bool ProtManager::writeRecord(QString param, const int atomType, int potok){
 }
 
 bool ProtManager::saveFile(const QString& savePath, const QString& saveNUPath, QString& error){
+    QMutexLocker locker(&m_mutex);
     if (!writeFile.isOpen() || !nuFile.isOpen()){
         if (!writeFile.open(QIODevice::WriteOnly | QIODevice::Append)){
             //QMessageBox::critical(nullptr, "Ошибка!", "Не удалось открыть файл протокола\n" + writeFile.errorString() + "\n" + readFile.errorString());
@@ -191,6 +197,7 @@ bool ProtManager::saveFile(const QString& savePath, const QString& saveNUPath, Q
 }
 static const int size_prewiev_title_prot = 10 + 4;
 QString ProtManager::getAllFileDate(QString& errorText){
+    QMutexLocker locker(&m_mutex);
     qDebug() << "getAllFileDate";
     if (!this->readFile.isOpen()){
         errorText = "Не удалось открыть файл протокола";
@@ -363,6 +370,7 @@ QString ProtManager::getAllFileDate(QString& errorText){
             //qDebug() << int(readMas[0]);
             readMas = readMas.mid(4);
             QString message = codec->toUnicode(readMas);
+            message = message.toHtmlEscaped();
             //qDebug() << message;
 
             message.prepend(curHTMLStyleString);
@@ -395,6 +403,7 @@ QString ProtManager::getAllFileDate(QString& errorText){
 }
 
 QString ProtManager::getNewFileDate(QString& errorText){
+    QMutexLocker locker(&m_mutex);
     if (!this->readFile.isOpen()){
         errorText = "Не удалось открыть файл протокола!";
         return QString();
@@ -567,6 +576,7 @@ QString ProtManager::getNewFileDate(QString& errorText){
             readMas = readMas.mid(4);
             QString message = codec->toUnicode(readMas);
             //qDebug() << message;
+            message = message.toHtmlEscaped();
             message.prepend(curHTMLStyleString);
             message.append("\n</span>");
             protInfo.append(message);
@@ -597,10 +607,12 @@ QString ProtManager::getNewFileDate(QString& errorText){
 }
 
 QString ProtManager::getFilePath(){
+    QMutexLocker locker(&m_mutex);
     return readFile.fileName();
 }
 
 bool ProtManager::writeRecordToNU(QString record){
+    QMutexLocker locker(&m_mutex);
     if (!nuFile.isOpen()){
         return false;
     }
@@ -611,6 +623,7 @@ bool ProtManager::writeRecordToNU(QString record){
 }
 
 bool ProtManager::isValidProt(QString &errorText) {
+    QMutexLocker locker(&m_mutex);
     qDebug() << "getAllFileDate";
     if (!this->readFile.isOpen()){
         errorText = "Не удалось открыть файл протокола";
@@ -784,7 +797,7 @@ bool ProtManager::isValidProt(QString &errorText) {
             readMas = readMas.mid(4);
             QString message = codec->toUnicode(readMas);
             //qDebug() << message;
-
+            message.toHtmlEscaped();
             message.prepend(curHTMLStyleString);
             message.append("\n</span>");
 

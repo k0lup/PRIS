@@ -3,6 +3,7 @@
 #include <QtWidgets>
 #include <QThread>
 #include <QDataStream>
+#include <QTextDocumentFragment>
 #include <cstring>
 
 #include "mainwindow.h"
@@ -737,8 +738,13 @@ void directRunner::sendMessageToNU(const char *data, int len, bool *status){
     return;
 }
 void directRunner::printInProt(const QString& text, const QString &styleName, const textStyle &styleNotUse, bool nuMessage, bool onlyNUFile){
-    QString textMessage{text};
+    /*QString textMessage{text};
     if (text.length() > 0 && text.right(1) == "\n"){
+        textMessage.chop(1);
+    }*/
+    QString textMessage = text.toHtmlEscaped();
+
+    if (!textMessage.isEmpty() && textMessage.endsWith('\n')) {
         textMessage.chop(1);
     }
     QString textForWgt;
@@ -812,7 +818,7 @@ void directRunner::printInProt(const QString& text, const QString &styleName, co
         //запись в протокол (файл) стиля текста
         ProtManager::instance().writeRecord(textForProt, -2, styleTest.potok);
         //запись в протокол (файл) текста
-        textForProt = textMessage;
+        textForProt = QTextDocumentFragment::fromHtml(textMessage).toPlainText();;
         //textForProt.replace("\t", "    ");
         textForProt = replaceTabulation(textForProt);
 
@@ -4411,13 +4417,13 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             int diapVal;
 
 
-            if (ndops[i] == -1 || (ndops[i] <= 0.05)) diapVal = 0;
+            if (ndops[i] == -1 || (ndops[i] < 0.05)) diapVal = 0;
             //else if (ndops[i] <= 0.1) diapVal = 4;
-            else if (ndops[i] <= 1) diapVal = 5;
-            else if (ndops[i] <= 10) diapVal = 6;
-            else if (ndops[i] <= 100) diapVal = 7;
-            else if (ndops[i] <= 1000.0) diapVal = 1;
-            else if (ndops[i] <= 5000.0) diapVal = 2;
+            else if (ndops[i] < 1) diapVal = 5;
+            else if (ndops[i] < 10) diapVal = 6;
+            else if (ndops[i] < 100) diapVal = 7;
+            else if (ndops[i] < 1000.0) diapVal = 1;
+            else if (ndops[i] < 5000.0) diapVal = 2;
             else diapVal = 3;
 
             diap.append(diapVal);
@@ -6224,7 +6230,8 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     }
                     results << result;
                     printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2\n  Un = %4   res = %3").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])).arg(result).arg(int(respondNU[2])), "35", textStyle(), true, true);
-                    if (int(respondNU[2]) == 0){
+                    if (int(respondNU[2]) == 0) {
+                        result = 0;
                         printInProt(QString("НЕТ НАПРЯЖЕНИЯ НА ВХОДАХ АППЦП"), "13", textStyle());
                         if (constValues::isImitMode.load() != 1 && reactMode == reactType::STOP){
                             stopProg = true;
@@ -6666,6 +6673,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
 
                     printInProt(QString("\t\t\t   Print_otv()   kom = 0x%1  kz = %2\n   res = %3").arg(respondNU[0], 2, 16, QChar('0')).arg(int(respondNU[1])).arg(result), "35", textStyle(), true, true);
                     if (int(respondNU[2]) == 0){
+                        result = 0;
                         printInProt(QString("НЕТ НАПРЯЖЕНИЯ НА ВХОДАХ АППЦП"), "13", textStyle());
                         if (constValues::isImitMode.load() != 1){
                             stopProg = true;
@@ -7407,6 +7415,12 @@ void directRunner::exitEvent() {
 }
 
 bool directRunner::haveVolt(QString& error_message) {
+    bool v100_enabled = v100Mode;
+    if (v100_enabled) {
+        v100Mode = false;
+        emit v100Canceled();
+    }
+
     error_message.clear();
     /*if (!voltReady || voltSocket->state() != QAbstractSocket::ConnectedState)
         return false;*/
@@ -7501,6 +7515,11 @@ bool directRunner::haveVolt(QString& error_message) {
 
     if (!status) {
         error_message = "\t\t\tОшибка при выполнении команды в НУ";
+
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     if (respondNU.length() == 2 && respondNU.at(1) == 0){
@@ -7510,10 +7529,18 @@ bool directRunner::haveVolt(QString& error_message) {
     }
     else if (respondNU.length() != 2){
         error_message = "\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     else if (respondNU.at(1) == -1){
         error_message = "\t\t\t\tОшибка в аппаратуре НУ";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     cBA.clear();
@@ -7525,14 +7552,26 @@ bool directRunner::haveVolt(QString& error_message) {
     sendMessageToNU(cBA, cBA.length(), &status);
     if (!status){
         error_message = "\t\t\tОшибка при выполнении команды в НУ";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     if (respondNU.length() != 2){
         error_message = "\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     if (respondNU.at(1) == -1){
         error_message = "\t\t\tОшибка в аппаратуре НУ";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     printMessage.append("Сопртивление 1 МОм подключено к корпусу");
@@ -7547,6 +7586,10 @@ bool directRunner::haveVolt(QString& error_message) {
     sendMessageToNU(cBA.constData(), cBA.length(), &status);
 
     if (!status) {
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     if (respondNU.length() == 2 && respondNU.at(1) == 0){
@@ -7556,10 +7599,18 @@ bool directRunner::haveVolt(QString& error_message) {
     }
     else if (respondNU.length() != 2){
         error_message = "\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     else if (respondNU.at(1) == -1){
         error_message = "\t\t\t\tОшибка в аппаратуре НУ";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     cBA.clear();
@@ -7572,6 +7623,10 @@ bool directRunner::haveVolt(QString& error_message) {
     float result{0};
     if (!status) {
         error_message = "\t\t\tОшибка при выполнении команды в НУ";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     if (respondNU.length() == 2 + 4 && respondNU.at(1) == 0){
@@ -7581,6 +7636,10 @@ bool directRunner::haveVolt(QString& error_message) {
         std::memcpy(&result, floatData.constData(), sizeof(result));
         if (std::isnan(result) || std::isinf(result)){
             error_message = "\t\t\t\tОшибка в полученном ответе от НУ (неудалось получить значение)";
+            if (v100_enabled) {
+                v100Mode = true;
+                emit v100Selected();
+            }
             return false;
         }
     }
@@ -7594,6 +7653,10 @@ bool directRunner::haveVolt(QString& error_message) {
 
     if (!status) {
         error_message = "\t\t\tОшибка при выполнении команды в НУ";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     if (respondNU.length() == 2 && respondNU.at(1) == 0){
@@ -7603,19 +7666,37 @@ bool directRunner::haveVolt(QString& error_message) {
     }
     else if (respondNU.length() != 2){
         error_message = "\t\t\t\tОшибка в полученном ответе от НУ (ожидалось 2 байта)";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     else if (respondNU.at(1) == -1){
         error_message = "\t\t\t\tОшибка в аппаратуре НУ";
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
     }
     cBA.clear();
     printMessage.clear();
 
-    if (result >= 0 - 150 && result <= 0 + 150)
+    if (result >= 0 - 150 && result <= 0 + 150) {
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return true;
-    else
+    }
+    else {
+        if (v100_enabled) {
+            v100Mode = true;
+            emit v100Selected();
+        }
         return false;
+    }
 }
 
 double directRunner::getRWithVolt(int diap) {
