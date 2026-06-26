@@ -138,11 +138,15 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
 
+#ifdef Q_OS_WIN
+    nu_process->setProgram(nu_path);
+#endif
+#ifdef Q_OS_LINUX
     nu_process->setProgram("/bin/bash");
 
     nu_process->setArguments({nu_path});
+#endif
     nu_process->setWorkingDirectory(QFileInfo(nu_path).absolutePath());
-
     nu_process->start();
 
     if (paramValues.contains("ПОРТ_ПРИЕМ_ПЕРЕДАЧА")){
@@ -843,7 +847,7 @@ MainWindow::MainWindow(QWidget *parent)
             QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ ПФКС ПРИ НАЛИЧИИ ВЫЗВАННЫХ ЦИКЛОГРАММ!");
             return;
         } else {
-            QString programPath = paramValues.value("ПФКС");
+            QString programPath = paramValues.value("ПФКС").trimmed();
             if (programPath.trimmed().isEmpty()) {
                     QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ ПФКС! ПУТЬ К ФАЙЛУ ПУСТОЙ!");
                     return;
@@ -866,15 +870,42 @@ MainWindow::MainWindow(QWidget *parent)
                     return;
                 }
 
-                // 2. Создаем процесс
-                QProcess process;
+                if (pfks_process && pfks_process->state() != QProcess::NotRunning) {
+                    QMessageBox::warning(nullptr, "Предупреждение!", "ПФКС уже запущен!");
+                    return;
+                }
 
-                // 3. Запускаем
-                process.start(programPath);
+                if (pfks_process) {
+                    pfks_process->deleteLater();
+                    pfks_process = nullptr;
+                }
 
-                // 4. Ждем, стартовал ли он
-                if (!process.waitForStarted(3000)) {
-                    QMessageBox::warning(nullptr, "Предупреждение", "НЕ УДАЛОСЬ ЗАПУСТИТЬ ПФКС!");
+                pfks_process = new QProcess(this);
+
+                connect(pfks_process,
+                        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                        this,
+                        [this](int, QProcess::ExitStatus) {
+                            QProcess *proc = qobject_cast<QProcess *>(sender());
+                            if (proc) {
+                                proc->deleteLater();
+                            }
+
+                            if (pfks_process == proc) {
+                                pfks_process = nullptr;
+                            }
+                        });
+
+                pfks_process->setProgram(programPath);
+                pfks_process->setWorkingDirectory(fileInfo.absolutePath());
+                pfks_process->start();
+
+                if (!pfks_process->waitForStarted(3000)) {
+                    QMessageBox::warning(nullptr, "Предупреждение",
+                                         "Не удалось запустить ПФКС: " + pfks_process->errorString());
+
+                    pfks_process->deleteLater();
+                    pfks_process = nullptr;
                     return;
                 }
                 return;
@@ -890,7 +921,7 @@ MainWindow::MainWindow(QWidget *parent)
             QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ РЕДАКТОР ЦИКЛОГРАММ ПРИ НАЛИЧИИ ВЫЗВАННЫХ ЦИКЛОГРАММ!");
             return;
         } else {
-            QString programPath = paramValues.value("РЕДАКТОР");
+            QString programPath = paramValues.value("РЕДАКТОР").trimmed();
             if (programPath.trimmed().isEmpty()) {
                     QMessageBox::warning(nullptr, "Предупреждение", "НЕВОЗМОЖНО ОТКРЫТЬ РЕДАКТОР ЦИКЛОГРАММ! ПУТЬ К ФАЙЛУ ПУСТОЙ!");
                     return;
@@ -914,14 +945,42 @@ MainWindow::MainWindow(QWidget *parent)
                 }
 
                 // 2. Создаем процесс
-                QProcess process;
+                if (editor_process && editor_process->state() != QProcess::NotRunning) {
+                    QMessageBox::warning(nullptr, "Предупреждение!", "РЕДАКТОР уже запущен!");
+                    return;
+                }
 
-                // 3. Запускаем
-                process.start(programPath);
+                if (editor_process) {
+                    editor_process->deleteLater();
+                    editor_process = nullptr;
+                }
 
-                // 4. Ждем, стартовал ли он
-                if (!process.waitForStarted(3000)) {
-                    QMessageBox::warning(nullptr, "Предупреждение", "НЕ УДАЛОСЬ ЗАПУСТИТЬ РЕДАКТОР ЦИКЛОГРАММ!");
+                editor_process = new QProcess(this);
+
+                connect(editor_process,
+                        QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                        this,
+                        [this](int, QProcess::ExitStatus) {
+                            QProcess *proc = qobject_cast<QProcess *>(sender());
+                            if (proc) {
+                                proc->deleteLater();
+                            }
+
+                            if (editor_process == proc) {
+                                editor_process = nullptr;
+                            }
+                        });
+
+                editor_process->setProgram(programPath);
+                editor_process->setWorkingDirectory(fileInfo.absolutePath());
+                editor_process->start();
+
+                if (!editor_process->waitForStarted(3000)) {
+                    QMessageBox::warning(nullptr, "Предупреждение",
+                                         "Не удалось запустить РЕДАКТОР: " + editor_process->errorString());
+
+                    editor_process->deleteLater();
+                    editor_process = nullptr;
                     return;
                 }
                 return;

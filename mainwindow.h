@@ -126,5 +126,7 @@ private:
     QString numVersion = "01.00";
 
     QProcess *nu_process;
+    QProcess *pfks_process = nullptr;
+    QProcess *editor_process = nullptr;
 };
 #endif // MAINWINDOW_H
