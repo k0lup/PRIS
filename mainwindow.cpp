@@ -2393,6 +2393,18 @@ MainWindow::~MainWindow()
             nu_process->kill();
         }
     }
+    if (pfks_process) {
+        pfks_process->terminate();
+        if (!pfks_process->waitForFinished(3000)) {
+            pfks_process->kill();
+        }
+    }
+    if (editor_process) {
+        editor_process->terminate();
+        if (!editor_process->waitForFinished(3000)) {
+            editor_process->kill();
+        }
+    }
     if (stepWgt != nullptr && this->statusOpenned) delete this->stepWgt;
     emit sendExitEventToNU();
     if (dirRunnerThread != nullptr && dirRunnerThread->isRunning()){
