@@ -208,7 +208,7 @@ MainWindow::MainWindow(QWidget *parent)
     QString curCatalog = paramOnValues.value("ПРОГРАММЫ");
     if (curCatalog.isEmpty()) curCatalog = QCoreApplication::applicationDirPath();
 
-    QStringList parts = curCatalog.split(';', Qt::SkipEmptyParts);
+    QStringList parts = curCatalog.split(';', QString::SkipEmptyParts);
     curCatalogs.reserve(parts.size());
 
     const QString home = QDir::homePath();
