@@ -744,9 +744,9 @@ void directRunner::printInProt(const QString& text, const QString &styleName, co
     }*/
     QString textMessage = text.toHtmlEscaped();
 
-    if (!textMessage.isEmpty() && textMessage.endsWith('\n')) {
+    /*if (!textMessage.isEmpty() && textMessage.endsWith('\n')) {
         textMessage.chop(1);
-    }
+    }*/
     QString textForWgt;
     QString textForProt;
 
@@ -7574,8 +7574,8 @@ bool directRunner::haveVolt(QString& error_message) {
         }
         return false;
     }
-    printMessage.append("Сопртивление 1 МОм подключено к корпусу");
-    printInProt(printMessage, "30", textStyle());
+    printMessage.append("Сопротивление 1 МОм подключено к корпусу");
+    printInProt(printMessage, "30", textStyle(), true, false);
 
 
     cBA.clear();
