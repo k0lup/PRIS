@@ -1775,6 +1775,10 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         KS.chop(1);
         in.seek(0);
         QByteArray fileData = file.readAll();
+
+        printInProt(QString("KS_ME  : %1").arg(getKS(fileData).toUpper()), "13", textStyle(), true, false);
+        printInProt(QString("KS_FILE: %1").arg(KS.toUpper()), "13", textStyle(), true, false);
+
         if (constValues::isNeedCheckKS.load() == 1 && KS.toUpper() != getKS(fileData).toUpper()){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             if (dir.numDirect > -1){
@@ -1813,7 +1817,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             }
 
         }*/
-        printMessage.append("\t\t\t" + KS);
+        printMessage.append("\t\t\tКС=" + KS);
         //printMessage.prepend("<span style='color: green; white-space: pre;'>");
         //printMessage.append("</span>");
         //protocol->append(printMessage);
