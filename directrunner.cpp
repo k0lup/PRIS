@@ -742,7 +742,7 @@ void directRunner::printInProt(const QString& text, const QString &styleName, co
     if (text.length() > 0 && text.right(1) == "\n"){
         textMessage.chop(1);
     }*/
-    QString textMessage = text.toHtmlEscaped();
+    //QString textMessage = text.toHtmlEscaped();
 
     /*if (!textMessage.isEmpty() && textMessage.endsWith('\n')) {
         textMessage.chop(1);
@@ -812,13 +812,13 @@ void directRunner::printInProt(const QString& text, const QString &styleName, co
                           "Underline=%9\r\n"
                           "Strikeout=%10\r\n").arg(styleTest.potok).arg(styleTest.color).arg(styleTest.backColor).arg(styleTest.fontName).arg(styleTest.fontSize).arg(styleTest.charSet).arg(styleTest.bold).arg(styleTest.italic).arg(styleTest.underLine).arg(styleTest.strikeOut);
     if (nuMessage){
-        ProtManager::instance().writeRecordToNU(textMessage);
+        ProtManager::instance().writeRecordToNU(text);
     }
     if (!nuMessage || this->trackMode.load() == 1){
         //запись в протокол (файл) стиля текста
         ProtManager::instance().writeRecord(textForProt, -2, styleTest.potok);
         //запись в протокол (файл) текста
-        textForProt = QTextDocumentFragment::fromHtml(textMessage).toPlainText();;
+        textForProt = text;
         //textForProt.replace("\t", "    ");
         textForProt = replaceTabulation(textForProt);
 
@@ -847,7 +847,7 @@ void directRunner::printInProt(const QString& text, const QString &styleName, co
 
             textForWgt = QString(R"(<span style="white-space: pre; color: %1; background-color: %2; font-family: '%3'; font-size: %4px; font-weight: %5; font-style: %6; text-decoration: %7;">)").arg(textColor).arg(backgroundColor).arg(styleTest.fontName)
                     .arg(styleTest.fontSize * 1.5).arg(styleTest.bold ? "bold" : "normal").arg(styleTest.italic ? "italic" : "normal").arg(textDecoration);
-            textForWgt.append(textMessage);
+            textForWgt.append(text.toHtmlEscaped());
             textForWgt.append("</span>");
 
             QEventLoop loop;
@@ -5254,7 +5254,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             }
             table = QString();
             table.append(tableSplit);
-            table.chop(1);
+            //table.chop(1);
 
             printInProt(table, "0", textStyle());
             if (!this->GL_NORM_STATUS){
@@ -6821,7 +6821,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                 }
                 table = QString();
                 table.append(tableSplit);
-                table.chop(1);
+                //table.chop(1);
 
                 printInProt(table, "0", textStyle());
                 if (!this->GL_NORM_STATUS){
