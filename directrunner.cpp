@@ -5902,10 +5902,10 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         }
         if (respondNU.at(2) == (0)) {
             res = false;
-            errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
-            errorMessage.append(QString("\t\t\t\tНЕТ СВЯЗИ С ВОЛЬТМЕТРОМ!"));
-            printInProt(errorMessage, "13", textStyle());
-            return false;
+            //errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
+            //errorMessage.append(QString("\t\t\t\tНЕТ СВЯЗИ С ВОЛЬТМЕТРОМ!"));
+            //printInProt(errorMessage, "13", textStyle());
+            //return false;
         }
 
         if (res) {
