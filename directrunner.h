@@ -192,6 +192,8 @@ private:
 
     QByteArray voltResponse;
 
+    bool checkHaveVolt{false};
+
 };
 
 #endif // DIRECTRUNNER_H

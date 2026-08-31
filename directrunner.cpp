@@ -250,7 +250,7 @@ void directRunner::startWork(){
                 if (!NUErrorCodeValue.contains(code)) code = 255;
                 QString errorMessage = NUErrorCodeValue.value(code).errorMessage;
                 if (NUErrorCodeValue.value(code).needByte) errorMessage.append(QString(" %1").arg(int(nextByte)));
-                printInProt(QString("%1 : (%2) %3:%4:%5.(%6) %7 ( %8)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(messageStruct.code).arg(messageStruct.hour, 2, 10, QChar('0')).arg(messageStruct.min, 2, 10, QChar('0')).arg(messageStruct.sec, 2, 10, QChar('0')).arg(messageStruct.ms/*, 3, 10, QChar('0')*/).arg(errorMessage).arg(messageStruct.text), "22", textStyle());
+                printInProt(QString("%1 : (%2) %3:%4:%5.(%6) %7 ( %8)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(messageStruct.code).arg(messageStruct.hour, 2, 10, QChar('0')).arg(messageStruct.min, 2, 10, QChar('0')).arg(messageStruct.sec, 2, 10, QChar('0')).arg(messageStruct.ms/*, 3, 10, QChar('0')*/).arg(errorMessage).arg(messageStruct.text), "22", textStyle(), checkHaveVolt);
             }
             emit socketRRMes();
         });
@@ -324,7 +324,7 @@ void directRunner::startWork(){
                if (!NUErrorCodeValue.contains(code)) code = 255;
                QString errorMessage = NUErrorCodeValue.value(code).errorMessage;
                if (NUErrorCodeValue.value(code).needByte) errorMessage.append(QString(" %1").arg(int(nextByte)));
-               printInProt(QString("%1 : (%2) %3:%4:%5.(%6) %7 ( %8)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(int(response[0])).arg(response[8], 2, 10, QChar('0')).arg(response[7], 2, 10, QChar('0')).arg(response[10], 2, 10, QChar('0')).arg(int(response[9])/*, 3, 10, QChar('0')*/).arg(errorMessage).arg(codec->toUnicode(messageBA)), "22", textStyle());
+               printInProt(QString("%1 : (%2) %3:%4:%5.(%6) %7 ( %8)").arg(QDateTime::currentDateTime().toString("HH:mm:ss.zzz")).arg(int(response[0])).arg(response[8], 2, 10, QChar('0')).arg(response[7], 2, 10, QChar('0')).arg(response[10], 2, 10, QChar('0')).arg(int(response[9])/*, 3, 10, QChar('0')*/).arg(errorMessage).arg(codec->toUnicode(messageBA)), "22", textStyle(), checkHaveVolt);
            }
            emit this->socketRRMes();
         });
@@ -737,16 +737,17 @@ void directRunner::sendMessageToNU(const char *data, int len, bool *status){
     *status = true;
     return;
 }
-void directRunner::printInProt(const QString& text, const QString &styleName, const textStyle &styleNotUse, bool nuMessage, bool onlyNUFile){
+void directRunner::printInProt(const QString& text_message, const QString &styleName, const textStyle &styleNotUse, bool nuMessage, bool onlyNUFile){
     /*QString textMessage{text};
     if (text.length() > 0 && text.right(1) == "\n"){
         textMessage.chop(1);
     }*/
     //QString textMessage = text.toHtmlEscaped();
 
-    /*if (!textMessage.isEmpty() && textMessage.endsWith('\n')) {
-        textMessage.chop(1);
-    }*/
+    QString text = text_message;
+    if (!text.isEmpty() && text.endsWith('\n')) {
+        text.chop(1);
+    }
     QString textForWgt;
     QString textForProt;
 
@@ -7419,6 +7420,8 @@ void directRunner::exitEvent() {
 }
 
 bool directRunner::haveVolt(QString& error_message) {
+    checkHaveVolt = true;
+
     bool v100_enabled = v100Mode;
     if (v100_enabled) {
         v100Mode = false;
@@ -7524,6 +7527,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     if (respondNU.length() == 2 && respondNU.at(1) == 0){
@@ -7537,6 +7541,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     else if (respondNU.at(1) == -1){
@@ -7545,6 +7550,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     cBA.clear();
@@ -7560,6 +7566,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     if (respondNU.length() != 2){
@@ -7568,6 +7575,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     if (respondNU.at(1) == -1){
@@ -7576,6 +7584,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     printMessage.append("Сопротивление 1 МОм подключено к корпусу");
@@ -7594,6 +7603,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     if (respondNU.length() == 2 && respondNU.at(1) == 0){
@@ -7607,6 +7617,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     else if (respondNU.at(1) == -1){
@@ -7615,6 +7626,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     cBA.clear();
@@ -7631,6 +7643,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     if (respondNU.length() == 2 + 4 && respondNU.at(1) == 0){
@@ -7644,6 +7657,7 @@ bool directRunner::haveVolt(QString& error_message) {
                 v100Mode = true;
                 emit v100Selected();
             }
+            checkHaveVolt = false;
             return false;
         }
     }
@@ -7661,6 +7675,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     if (respondNU.length() == 2 && respondNU.at(1) == 0){
@@ -7674,6 +7689,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     else if (respondNU.at(1) == -1){
@@ -7682,6 +7698,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
     cBA.clear();
@@ -7692,6 +7709,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return true;
     }
     else {
@@ -7699,6 +7717,7 @@ bool directRunner::haveVolt(QString& error_message) {
             v100Mode = true;
             emit v100Selected();
         }
+        checkHaveVolt = false;
         return false;
     }
 }
