@@ -5856,6 +5856,11 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             printInProt(errorMessage, "13", textStyle());
             return false;
         }
+
+        printMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" "));
+        printInProt(printMessage, "0", textStyle());
+        printMessage.clear();
+
         if (socketCanal1->state() != QAbstractSocket::ConnectedState || socketCanal2->state() != QAbstractSocket::ConnectedState){
             errorMessage.append(dir.directive + " " + dir.testParamDirect[0][1].join(" ") + "\n");
             errorMessage.append("\t\t\tНЕТ СВЯЗИ С НУ");
@@ -5910,9 +5915,9 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
         }
 
         if (res) {
-            printMessage.append("\n\t\t\tВН_ПР ОБНАРУЖЕН!");
+            printMessage.append("\t\t\tВН_ПР ОБНАРУЖЕН!");
         } else {
-            printMessage.append("\n\t\t\tВН_ПР НЕ ОБНАРУЖЕН");
+            printMessage.append("\t\t\tВН_ПР НЕ ОБНАРУЖЕН");
         }
 
         if (constValues::isImitMode.load() != 1 && !res){

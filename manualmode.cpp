@@ -495,26 +495,13 @@ bool ManualMode::contactSelected(raz x, polus p, int num){
             }
             for (auto &btn : plX2btnVector){
                 if (!btn->isChecked() || btn->text().toInt() - 1 == num) continue;
-                if (!sendCommand(static_cast<char>(NUCommand::PODKL_P), btn->text().toInt() - 1, false)) return false;
+                if (!sendCommand(static_cast<char>(NUCommand::PODKL_P), btn->text().toInt() - 1 + 50, false)) return false;
+                contStatus[btn->text().toInt() - 1 + 50] = ContStatus::DISCONNECTED;
+                //emit podkl(static_cast<char>(NUCommand::PODKL_P), btn->text().toInt() - 1 + 50, false);
                 btn->setChecked(false);
-                contStatus[btn->text().toInt() - 1] = ContStatus::DISCONNECTED;
-                {
-                    /*blockCommand.store(1);
-                    commandStatus.store(0);
-                    QEventLoop loop;
-                    QTimer timer;
-                    timer.setInterval(5000);
-                    QObject::connect(this, &ManualMode::commandResultReady, &loop, &QEventLoop::quit);
-                    QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-                    emit this->podkl(static_cast<char>(NUCommand::PODKL_P), btn->text().toInt() - 1, false);
-                    timer.start();
-                    loop.exec();
-                    blockCommand.store(0);*/
-                }
-                //qDebug() << "DISCONNECT " << btn->text().toInt() - 1;
                 btn->setStyleSheet(defaultBtnStyle);
                 int btnNum = btn->text().toInt() - 1;
-                minX1btnVector[btnNum]->setStyleSheet(defaultBtnStyle);
+                minX2btnVector[btnNum]->setStyleSheet(defaultBtnStyle);
             }
             //plX1btnVector[num]->setChecked(true);
             if (minX1btnVector[num]->isChecked() == true || contStatus[num] == ContStatus::CONNECTED_MINUS){
@@ -570,13 +557,26 @@ bool ManualMode::contactSelected(raz x, polus p, int num){
             }
             for (auto &btn : plX1btnVector){
                 if (!btn->isChecked() || btn->text().toInt() - 1 == num) continue;
-                if (!sendCommand(static_cast<char>(NUCommand::PODKL_P), btn->text().toInt() - 1 + 50, false)) return false;
-                contStatus[btn->text().toInt() - 1 + 50] = ContStatus::DISCONNECTED;
-                //emit podkl(static_cast<char>(NUCommand::PODKL_P), btn->text().toInt() - 1 + 50, false);
+                if (!sendCommand(static_cast<char>(NUCommand::PODKL_P), btn->text().toInt() - 1, false)) return false;
                 btn->setChecked(false);
+                contStatus[btn->text().toInt() - 1] = ContStatus::DISCONNECTED;
+                {
+                    /*blockCommand.store(1);
+                    commandStatus.store(0);
+                    QEventLoop loop;
+                    QTimer timer;
+                    timer.setInterval(5000);
+                    QObject::connect(this, &ManualMode::commandResultReady, &loop, &QEventLoop::quit);
+                    QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+                    emit this->podkl(static_cast<char>(NUCommand::PODKL_P), btn->text().toInt() - 1, false);
+                    timer.start();
+                    loop.exec();
+                    blockCommand.store(0);*/
+                }
+                //qDebug() << "DISCONNECT " << btn->text().toInt() - 1;
                 btn->setStyleSheet(defaultBtnStyle);
                 int btnNum = btn->text().toInt() - 1;
-                minX2btnVector[btnNum]->setStyleSheet(defaultBtnStyle);
+                minX1btnVector[btnNum]->setStyleSheet(defaultBtnStyle);
             }
             for (auto &btn : plX2btnVector){
                 if (!btn->isChecked() || btn->text().toInt() - 1 == num) continue;
