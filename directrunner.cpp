@@ -3203,7 +3203,7 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
                     return false;
                 }
                 if (react == "СТОП") reactMode = reactType::STOP;
-                else reactMode = reactType::STOP;
+                else reactMode = reactType::SLED;
                 //stopFlag = true;
                 qDebug() << "СТОП";
             } else if (!react.isEmpty() /*&& dir.numDirect > 0*/){
@@ -5921,6 +5921,8 @@ bool directRunner::runDirectFunc(const DirectParser::Direct &dir){
             //printMessage.append("</span>");
         } else {
             GL_NORM_STATUS = true;
+            stopProg = true;
+            stopMessageStr = "ДИРЕКТИВА УВ: ВН_ПР НЕ ОБНАРУЖЕН";
         }
         //protocol->append(printMessage);
         {
